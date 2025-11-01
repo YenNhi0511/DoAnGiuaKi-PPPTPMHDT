@@ -1,7 +1,7 @@
 // lib/services/auth_service.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'api_client.dart';
 import '../models/user.dart';
 
@@ -22,7 +22,7 @@ class AuthService extends ChangeNotifier {
     tryAutoLogin();
   }
 
-  /* ---------- Lấy thông tin người dùng ---------- */
+  // ----- Lấy hồ sơ người dùng -----
   Future<void> _getUserProfile() async {
     try {
       final responseData = await _apiClient.get('auth/me');
@@ -33,28 +33,24 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /* ---------- Tự động đăng nhập ---------- */
+  // ----- Tự động đăng nhập -----
   Future<void> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!prefs.containsKey('token')) {
+    final savedToken = prefs.getString('token');
+
+    if (savedToken == null) {
       _isAuthLoading = false;
       notifyListeners();
       return;
     }
 
-    _token = prefs.getString('token');
-    if (_token == null) {
-      _isAuthLoading = false;
-      notifyListeners();
-      return;
-    }
-
+    _token = savedToken;
     await _getUserProfile();
     _isAuthLoading = false;
     notifyListeners();
   }
 
-  /* ---------- Đăng nhập ---------- */
+  // ----- Đăng nhập -----
   Future<void> login(String email, String password) async {
     try {
       final response = await _apiClient.post('auth/login', {
@@ -63,7 +59,9 @@ class AuthService extends ChangeNotifier {
       });
 
       _token = response['token'];
-      if (_token == null) throw Exception('Không nhận được token từ server');
+      if (_token == null) {
+        throw Exception('Không nhận được token từ server');
+      }
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', _token!);
@@ -75,7 +73,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /* ---------- Đăng ký ---------- */
+  // ----- Đăng ký -----
   Future<void> register(String fullName, String email, String password) async {
     try {
       final response = await _apiClient.post('auth/register', {
@@ -85,7 +83,9 @@ class AuthService extends ChangeNotifier {
       });
 
       _token = response['token'];
-      if (_token == null) throw Exception('Không nhận được token từ server');
+      if (_token == null) {
+        throw Exception('Không nhận được token từ server');
+      }
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', _token!);
@@ -97,7 +97,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /* ---------- Đổi mật khẩu ---------- */
+  // ----- Đổi mật khẩu -----
   Future<void> changePassword(String oldPassword, String newPassword) async {
     try {
       final response = await _apiClient.post(
@@ -115,13 +115,11 @@ class AuthService extends ChangeNotifier {
 
       debugPrint('Đổi mật khẩu thành công!');
     } catch (e) {
-      throw Exception(
-        e.toString().replaceAll('Exception: ', ''),
-      );
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
-  /* ---------- Đăng xuất ---------- */
+  // ----- Đăng xuất -----
   Future<void> logout() async {
     _token = null;
     _currentUser = null;

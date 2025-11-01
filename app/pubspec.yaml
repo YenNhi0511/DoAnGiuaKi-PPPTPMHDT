@@ -2,12 +2,12 @@ name: doangiuaki_ppptpmhdt
 description: A new Flutter project.
 
 # Ngăn việc vô tình publish lên pub.dev
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0' # Yêu cầu phiên bản Dart 3.0.0 trở lên
+  sdk: ">=3.0.0 <4.0.0" # Yêu cầu phiên bản Dart 3.0.0 trở lên
 
 #
 # === PHẦN DEPENDENCIES ===
@@ -40,6 +40,7 @@ dependencies:
   # 7. Định dạng ngày tháng
   intl: ^0.19.0
 
+  device_info_plus: ^10.1.0
 
 #
 # === PHẦN DEV DEPENDENCIES ===
@@ -59,4 +60,3 @@ flutter:
 
   # fonts:
   #   - family: Schyler
-

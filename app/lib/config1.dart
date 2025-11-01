@@ -3,40 +3,35 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 
 class Config {
-  // ===== QUAN TRỌNG: THAY IP NÀY BẰNG IP LAPTOP CỦA BẠN =====
-  // Cách lấy IP:
-  // - Windows: CMD → ipconfig → IPv4 Address (VD: 192.168.1.100)
-  // - macOS/Linux: Terminal → ifconfig → inet
-  static const String _pcIp = '10.159.142.16'; // ← SỬA IP NÀY
+  // IP của laptop bạn trong cùng WiFi
+  // lấy từ ipconfig: 192.168.77.104
+  static const String _pcIp = '192.168.77.104';
   static const String _port = '4000';
 
-  // URL cho Emulator Android (10.0.2.2 = localhost của máy host)
+  // base cho emulator Android
   static const String _emulatorBase = 'http://10.0.2.2:$_port/api';
 
-  // URL cho điện thoại thật / web / desktop (cùng WiFi)
+  // base cho điện thoại thật / web / desktop cùng mạng
   static const String _realDeviceBase = 'http://$_pcIp:$_port/api';
 
-  // Cache URL sau lần đầu phát hiện
   static String? _cachedBaseUrl;
 
-  /// Tự động phát hiện môi trường và trả về URL phù hợp
+  /// Dùng: `final baseUrl = await Config.getBaseUrl();`
   static Future<String> getBaseUrl() async {
-    // Đã detect rồi thì return luôn
+    // đã detect rồi thì khỏi detect nữa
     if (_cachedBaseUrl != null) return _cachedBaseUrl!;
 
-    // Nếu chạy trên PC (Windows/Linux/macOS)
+    // chạy trên PC (flutter run -d windows/web/macos)
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       _cachedBaseUrl = _realDeviceBase;
-      print('🖥️  Phát hiện: Desktop → Dùng $_cachedBaseUrl');
       return _cachedBaseUrl!;
     }
 
-    // Nếu chạy trên Android → Phân biệt Emulator vs Real Device
+    // chạy trên Android -> phân biệt emulator vs máy thật
     if (Platform.isAndroid) {
       final deviceInfo = DeviceInfoPlugin();
       final androidInfo = await deviceInfo.androidInfo;
 
-      // Kiểm tra xem có phải Emulator không
       final isEmulator = !androidInfo.isPhysicalDevice ||
           (androidInfo.model?.toLowerCase().contains('sdk') ?? false) ||
           (androidInfo.product?.toLowerCase().contains('sdk') ?? false) ||
@@ -44,19 +39,11 @@ class Config {
               false);
 
       _cachedBaseUrl = isEmulator ? _emulatorBase : _realDeviceBase;
-
-      if (isEmulator) {
-        print('📱 Phát hiện: Android Emulator → Dùng $_cachedBaseUrl');
-      } else {
-        print('📱 Phát hiện: Điện thoại thật → Dùng $_cachedBaseUrl');
-      }
-
       return _cachedBaseUrl!;
     }
 
-    // iOS tạm dùng realDevice (có thể mở rộng sau)
+    // iOS tạm dùng luôn real
     _cachedBaseUrl = _realDeviceBase;
-    print('🍎 Phát hiện: iOS → Dùng $_cachedBaseUrl');
     return _cachedBaseUrl!;
   }
 }

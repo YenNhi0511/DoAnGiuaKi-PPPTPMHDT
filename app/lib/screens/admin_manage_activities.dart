@@ -2,24 +2,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/activity_provider.dart';
-import 'activity_form.dart'; // Import màn hình form
-import 'activity_detail_screen.dart'; // <-- 1. IMPORT MÀN HÌNH CHI TIẾT
+import 'activity_form.dart';
+import 'activity_detail_screen.dart';
 
 class AdminManageActivitiesScreen extends StatefulWidget {
   const AdminManageActivitiesScreen({Key? key}) : super(key: key);
 
   @override
-  _AdminManageActivitiesScreenState createState() =>
+  State<AdminManageActivitiesScreen> createState() =>
       _AdminManageActivitiesScreenState();
 }
 
+// đặt class State công khai luôn, đừng dùng _
 class _AdminManageActivitiesScreenState
     extends State<AdminManageActivitiesScreen> {
   @override
   void initState() {
     super.initState();
-    // Gọi hàm fetchActivitiesAdmin từ PROVIDER
+    // Gọi fetch sau khi build xong
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // chỗ này không có await nên KHÔNG bị use_build_context_synchronously
       Provider.of<ActivityProvider>(context, listen: false)
           .fetchActivitiesAdmin();
     });
@@ -30,17 +32,18 @@ class _AdminManageActivitiesScreenState
     try {
       await Provider.of<ActivityProvider>(context, listen: false)
           .deleteActivity(id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xóa hoạt động thành công')),
-        );
-      }
+
+      // ✨ sau await phải check mounted rồi mới dùng context
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Xóa hoạt động thành công')),
+      );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi xóa: $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi khi xóa: $e')),
+      );
     }
   }
 
@@ -48,36 +51,35 @@ class _AdminManageActivitiesScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Quản lý Hoạt động'),
+        title: const Text('Quản lý Hoạt động'),
         actions: [
           IconButton(
-            icon: Icon(Icons.add),
+            icon: const Icon(Icons.add),
             onPressed: () {
-              // Đi đến form để tạo mới
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ActivityFormScreen(), // Chế độ tạo mới
+                  builder: (context) => const ActivityFormScreen(),
                 ),
               );
             },
           ),
         ],
       ),
-      // Dùng Consumer để lắng nghe thay đổi từ Provider
       body: Consumer<ActivityProvider>(
         builder: (context, activityProvider, child) {
           if (activityProvider.isLoadingActivities) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (activityProvider.activitiesError != null) {
             return Center(
-                child: Text('Lỗi: ${activityProvider.activitiesError}'));
+              child: Text('Lỗi: ${activityProvider.activitiesError}'),
+            );
           }
 
           if (activityProvider.activities.isEmpty) {
-            return Center(child: Text('Không có hoạt động nào.'));
+            return const Center(child: Text('Không có hoạt động nào.'));
           }
 
           return ListView.builder(
@@ -85,7 +87,7 @@ class _AdminManageActivitiesScreenState
             itemBuilder: (context, index) {
               final activity = activityProvider.activities[index];
               return Card(
-                margin: EdgeInsets.all(8),
+                margin: const EdgeInsets.all(8),
                 child: ListTile(
                   title: Text(activity.name),
                   subtitle: Text(activity.location),
@@ -94,37 +96,38 @@ class _AdminManageActivitiesScreenState
                     children: [
                       // Nút Sửa
                       IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
+                        icon: const Icon(Icons.edit, color: Colors.blue),
                         onPressed: () {
-                          // Đi đến form để sửa
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  ActivityFormScreen(activity: activity), // Chế độ sửa
+                                  ActivityFormScreen(activity: activity),
                             ),
                           );
                         },
                       ),
                       // Nút Xóa
                       IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
-                          // Hiển thị dialog xác nhận xóa
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: Text('Xác nhận xóa'),
+                              title: const Text('Xác nhận xóa'),
                               content: Text(
-                                  'Bạn có chắc muốn xóa hoạt động "${activity.name}"?'),
+                                'Bạn có chắc muốn xóa hoạt động "${activity.name}"?',
+                              ),
                               actions: [
                                 TextButton(
-                                  child: Text('Hủy'),
+                                  child: const Text('Hủy'),
                                   onPressed: () => Navigator.of(ctx).pop(),
                                 ),
                                 TextButton(
-                                  child: Text('Xóa',
-                                      style: TextStyle(color: Colors.red)),
+                                  child: const Text(
+                                    'Xóa',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
                                   onPressed: () {
                                     Navigator.of(ctx).pop();
                                     _deleteActivity(activity.id);
@@ -137,15 +140,12 @@ class _AdminManageActivitiesScreenState
                       ),
                     ],
                   ),
-                  // <-- 2. THÊM SỰ KIỆN ONTAP VÀO ĐÂY
                   onTap: () {
-                    // Mở màn hình chi tiết khi nhấn vào
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ActivityDetailScreen(
-                          activity: activity, // Truyền hoạt động qua
-                        ),
+                        builder: (context) =>
+                            ActivityDetailScreen(activity: activity),
                       ),
                     );
                   },

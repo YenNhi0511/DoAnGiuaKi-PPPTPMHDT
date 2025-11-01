@@ -1,100 +1,71 @@
 // lib/services/activity_service.dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+import '../services/config.dart';
+import '../services/api_client.dart';
 import '../models/activity.dart';
-import 'api_client.dart';
-// <-- 1. THÊM IMPORT MODEL MỚI -->
-import '../models/attendance_record.dart'; 
+import '../models/attendance_record.dart';
 
 class ActivityService {
-  final ApiClient _apiClient = ApiClient();
+  // dùng lại client để tự gắn token
+  final ApiClient _client = ApiClient();
 
-  // --- STUDENT METHODS ---
-
+  // ======= 1. LẤY DS HOẠT ĐỘNG (PUBLIC / SV) =======
   Future<List<Activity>> fetchActivities() async {
-    try {
-      final List<dynamic> responseData = await _apiClient.get('activities');
-      return Activity.listFromJson(responseData);
-    } catch (e) {
-      throw Exception('Lỗi tải danh sách hoạt động: $e');
+    // nếu API này không cần auth thì có thể dùng http trực tiếp
+    final baseUrl = await Config.getBaseUrl();
+    final res = await http.get(Uri.parse('$baseUrl/activities'));
+
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+      return data.map((e) => Activity.fromJson(e)).toList();
     }
+    throw Exception('Lỗi lấy danh sách hoạt động: ${res.statusCode}');
   }
 
+  // ======= 2. LẤY LỊCH SỬ HOẠT ĐỘNG CỦA USER (CẦN TOKEN) =======
   Future<List<Activity>> fetchMyHistory() async {
-    try {
-      final List<dynamic> responseData = await _apiClient.get('activities/my-history');
-      return Activity.listFromJson(responseData);
-    } catch (e) {
-      throw Exception('Lỗi tải lịch sử hoạt động: $e');
-    }
+    final data = await _client.get('activities/history');
+    // server trả mảng
+    return (data as List).map((e) => Activity.fromJson(e)).toList();
   }
 
-  Future<void> registerForActivity(String activityId) async {
-    try {
-      await _apiClient.post('activities/$activityId/register', {});
-    } catch (e) {
-      throw Exception('Lỗi đăng ký: $e');
-    }
+  // ======= 3. ĐĂNG KÝ HOẠT ĐỘNG (CẦN TOKEN) =======
+  Future<void> registerForActivity(String id) async {
+    await _client.post('activities/$id/register', {});
   }
 
-  Future<void> unregisterFromActivity(String activityId) async {
-    try {
-      await _apiClient.post('activities/$activityId/unregister', {});
-    } catch (e) {
-      throw Exception('Lỗi hủy đăng ký: $e');
-    }
+  // ======= 4. HỦY ĐĂNG KÝ HOẠT ĐỘNG (CẦN TOKEN) =======
+  Future<void> unregisterFromActivity(String id) async {
+    await _client.post('activities/$id/unregister', {});
   }
 
-  // --- HÀM ĐIỂM DANH SV (QUÉT QR) ---
-  Future<void> markAttendance(String activityId) async {
-    try {
-      await _apiClient.post('activities/attend', {
-        'activityId': activityId
-      });
-    } catch (e) {
-      throw Exception('Lỗi điểm danh: $e');
-    }
+  // ======= 5. ĐIỂM DANH (CẦN TOKEN) =======
+  Future<void> markAttendance(String id) async {
+    await _client.post('activities/$id/attendance', {});
   }
 
-  // --- HÀM MỚI CHO ADMIN (GỌI API LẤY DANH SÁCH ĐIỂM DANH) ---
-  Future<List<AttendanceRecord>> fetchAttendanceList(String activityId) async {
-    try {
-      // Gọi API endpoint mới (GET /api/activities/:activityId/attendance)
-      final List<dynamic> responseData = await _apiClient.get('activities/$activityId/attendance');
-      return AttendanceRecord.listFromJson(responseData);
-    } catch (e) {
-      throw Exception('Lỗi tải danh sách điểm danh: ${e.toString()}');
-    }
+  // ======= 6. ADMIN: LẤY DS ĐIỂM DANH =======
+  Future<List<AttendanceRecord>> fetchAttendanceList(String id) async {
+    final data = await _client.get('activities/$id/attendance');
+    return (data as List).map((e) => AttendanceRecord.fromJson(e)).toList();
   }
 
-  // --- ADMIN METHODS ---
-
-  // Hàm fetchActivitiesAdmin (gọi chung hàm fetchActivities)
-  Future<List<Activity>> fetchActivitiesAdmin() async {
-    return fetchActivities(); 
-  }
-
+  // ======= 7. ADMIN: TẠO HOẠT ĐỘNG =======
   Future<Activity> createActivity(Map<String, dynamic> data) async {
-    try {
-      final responseData = await _apiClient.post('activities', data);
-      return Activity.fromJson(responseData);
-    } catch (e) {
-      throw Exception('Lỗi tạo hoạt động: $e');
-    }
+    final res = await _client.post('activities', data);
+    return Activity.fromJson(res);
   }
 
+  // ======= 8. ADMIN: CẬP NHẬT HOẠT ĐỘNG =======
   Future<Activity> updateActivity(String id, Map<String, dynamic> data) async {
-    try {
-      final responseData = await _apiClient.put('activities/$id', data);
-      return Activity.fromJson(responseData);
-    } catch (e) {
-      throw Exception('Lỗi cập nhật hoạt động: $e');
-    }
+    final res = await _client.put('activities/$id', data);
+    return Activity.fromJson(res);
   }
 
+  // ======= 9. ADMIN: XÓA HOẠT ĐỘNG =======
   Future<void> deleteActivity(String id) async {
-    try {
-      await _apiClient.delete('activities/$id');
-    } catch (e) {
-      throw Exception('Lỗi xóa hoạt động: $e');
-    }
+    await _client.delete('activities/$id');
   }
 }

@@ -17,14 +17,15 @@ class MyThemes {
   );
 
   // ------------------ LIGHT THEME ------------------
-  static final lightTheme = ThemeData(
+  static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     primaryColor: primaryColor,
-    colorScheme: ColorScheme.light(
+    // ✅ không dùng background (deprecated) nữa
+    colorScheme: const ColorScheme.light(
       primary: primaryColor,
       secondary: accentColor,
-      background: scaffoldLight,
+      surface: scaffoldLight,
     ),
     scaffoldBackgroundColor: scaffoldLight,
 
