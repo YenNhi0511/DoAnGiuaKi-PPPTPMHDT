@@ -1,4 +1,4 @@
-// lib/screens/admin_home.dart
+// lib/screens/admin_home.dart - ĐÃ SỬA
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -40,12 +40,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         0, (sum, activity) => sum + activity.participantCount);
   }
 
+  // ✅ SỬA: Tính số người chờ điểm danh (đã đăng ký nhưng chưa điểm danh)
   int _getWaitingAttendance(Activity? activity) {
     if (activity == null) return 0;
     final now = DateTime.now();
-    // Chỉ đếm nếu hoạt động đang diễn ra
+
+    // Chỉ tính nếu hoạt động đang diễn ra
     if (now.isAfter(activity.startDate) && now.isBefore(activity.endDate)) {
-      // Số người đã đăng ký - số người đã điểm danh (cần API mới để lấy số người đã điểm danh)
+      // participantCount = tổng số đã đăng ký
+      // Cần lấy số người đã điểm danh từ API (tạm thời trả về participantCount)
+      // TODO: Gọi API để lấy số người đã điểm danh thực tế
       return activity.participantCount;
     }
     return 0;
@@ -63,7 +67,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           final upcomingActivities =
               _getUpcomingActivities(provider.activities);
           final totalActivities = provider.activities.length;
-          final totalParticipants = _getTotalParticipants(provider.activities);
+
+          // ✅ SỬA: Tính số liệu dựa trên hoạt động được chọn
+          final displayParticipants = _selectedActivity != null
+              ? _selectedActivity!.participantCount
+              : _getTotalParticipants(provider.activities);
           final waitingCount = _getWaitingAttendance(_selectedActivity);
 
           return Column(
@@ -135,6 +143,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                             value: totalActivities.toString(),
                             icon: Icons.event_note,
                             color: Colors.white.withOpacity(0.12),
+                            subtitle:
+                                _selectedActivity != null ? 'Đã chọn' : null,
                             onTap: () {
                               _showActivitySelector(
                                   context, upcomingActivities);
@@ -145,9 +155,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         Expanded(
                           child: _AdminStatCard(
                             title: 'SV tham gia',
-                            value: totalParticipants.toString(),
+                            value: displayParticipants.toString(),
                             icon: Icons.group,
                             color: Colors.white.withOpacity(0.12),
+                            subtitle: _selectedActivity != null
+                                ? _selectedActivity!.name.length > 10
+                                    ? '${_selectedActivity!.name.substring(0, 10)}...'
+                                    : _selectedActivity!.name
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -157,6 +172,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                             value: waitingCount.toString(),
                             icon: Icons.qr_code_scanner,
                             color: Colors.white.withOpacity(0.12),
+                            subtitle: _selectedActivity != null
+                                ? 'Đang diễn ra'
+                                : null,
                           ),
                         ),
                       ],
@@ -304,9 +322,24 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Chọn hoạt động',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Chọn hoạt động',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  if (_selectedActivity != null)
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedActivity = null;
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Xóa chọn'),
+                    ),
+                ],
               ),
               const SizedBox(height: 16),
               if (activities.isEmpty)
@@ -354,6 +387,7 @@ class _AdminStatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
+  final String? subtitle;
 
   const _AdminStatCard({
     required this.title,
@@ -361,6 +395,7 @@ class _AdminStatCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.onTap,
+    this.subtitle,
   });
 
   @override
@@ -390,6 +425,12 @@ class _AdminStatCard extends StatelessWidget {
               title,
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
+            if (subtitle != null)
+              Text(
+                subtitle!,
+                style: const TextStyle(color: Colors.white60, fontSize: 10),
+                overflow: TextOverflow.ellipsis,
+              ),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
-// lib/providers/theme_provider.dart
+// lib/providers/theme_provider.dart - ĐÃ SỬA
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MyThemes {
   static const Color primaryColor = Color(0xFF673AB7);
@@ -21,20 +22,17 @@ class MyThemes {
     useMaterial3: true,
     brightness: Brightness.light,
     primaryColor: primaryColor,
-    // ✅ không dùng background (deprecated) nữa
     colorScheme: const ColorScheme.light(
       primary: primaryColor,
       secondary: accentColor,
       surface: scaffoldLight,
     ),
     scaffoldBackgroundColor: scaffoldLight,
-
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: Colors.black,
       elevation: 2,
     ),
-
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
@@ -46,8 +44,6 @@ class MyThemes {
         textStyle: const TextStyle(fontWeight: FontWeight.bold),
       ),
     ),
-
-    // ✅ CardThemeData đúng kiểu (Flutter 3.35+)
     cardTheme: const CardThemeData(
       color: Colors.white,
       elevation: 1,
@@ -56,7 +52,6 @@ class MyThemes {
       ),
       margin: EdgeInsets.all(8),
     ),
-
     inputDecorationTheme: inputDecorationStyle.copyWith(
       fillColor: Colors.grey.shade100,
       focusedBorder: OutlineInputBorder(
@@ -78,14 +73,11 @@ class MyThemes {
       surface: Color(0xFF1E1E1E),
     ),
     scaffoldBackgroundColor: const Color(0xFF121212),
-
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF1E1E1E),
       foregroundColor: Colors.white,
       elevation: 2,
     ),
-
-    // ✅ CardThemeData cho dark mode
     cardTheme: const CardThemeData(
       color: Color(0xFF1E1E1E),
       elevation: 2,
@@ -94,7 +86,6 @@ class MyThemes {
       ),
       margin: EdgeInsets.all(8),
     ),
-
     inputDecorationTheme: inputDecorationStyle.copyWith(
       fillColor: const Color(0xFF2C2C2C),
       focusedBorder: OutlineInputBorder(
@@ -111,8 +102,26 @@ class ThemeProvider with ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
 
-  void toggleTheme(bool isDark) {
+  // ✅ Constructor - Load theme khi khởi tạo
+  ThemeProvider() {
+    _loadTheme();
+  }
+
+  // ✅ Load theme từ SharedPreferences
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isDark = prefs.getBool('isDarkMode') ?? false;
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+    notifyListeners();
+  }
+
+  // ✅ Toggle theme và lưu vào SharedPreferences
+  Future<void> toggleTheme(bool isDark) async {
+    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', isDark);
+
     notifyListeners();
   }
 }

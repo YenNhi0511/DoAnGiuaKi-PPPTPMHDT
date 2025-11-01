@@ -1,7 +1,9 @@
-// lib/screens/admin_report_screen.dart
+// lib/screens/admin_report_screen.dart - ĐÃ THÊM XUẤT EXCEL
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import '../providers/activity_provider.dart';
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
@@ -15,6 +17,7 @@ class AdminReportScreen extends StatefulWidget {
 
 class _AdminReportScreenState extends State<AdminReportScreen> {
   bool _isLoading = false;
+  bool _isExporting = false;
   List<ReportRecord> _records = [];
   String? _errorMessage;
 
@@ -32,7 +35,6 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
 
     try {
       final apiClient = ApiClient();
-      // Gọi API mới để lấy báo cáo tổng hợp
       final data = await apiClient.get('admin/report');
 
       setState(() {
@@ -45,6 +47,65 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
         _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  // ✅ THÊM: Hàm xuất Excel
+  Future<void> _exportToExcel() async {
+    if (_records.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không có dữ liệu để xuất')),
+      );
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      // Tạo nội dung CSV
+      StringBuffer csv = StringBuffer();
+
+      // Header
+      csv.writeln('STT,MSSV,Họ và tên,Email,Hoạt động');
+
+      // Data rows
+      for (int i = 0; i < _records.length; i++) {
+        final record = _records[i];
+        csv.writeln(
+            '${i + 1},"${record.studentId}","${record.fullName}","${record.email}","${record.activityName}"');
+      }
+
+      // Lưu file
+      final directory = await getApplicationDocumentsDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filePath = '${directory.path}/BaoCaoHoatDong_$timestamp.csv';
+
+      final file = File(filePath);
+      await file.writeAsString(csv.toString());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã xuất file: $filePath'),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi xuất file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isExporting = false);
     }
   }
 
@@ -88,13 +149,30 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
               const SizedBox(width: 6),
-              const Text(
-                'Báo cáo tổng hợp',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+              const Expanded(
+                child: Text(
+                  'Báo cáo tổng hợp',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
+              ),
+              // ✅ THÊM: Nút xuất Excel
+              IconButton(
+                icon: _isExporting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.download, color: Colors.white),
+                onPressed: _isExporting ? null : _exportToExcel,
+                tooltip: 'Xuất Excel',
               ),
             ],
           ),
