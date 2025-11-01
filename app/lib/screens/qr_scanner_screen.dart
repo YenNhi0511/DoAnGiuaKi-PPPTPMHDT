@@ -1,5 +1,8 @@
-// lib/screens/qr_scanner_screen.dart
+// lib/screens/qr_scanner_screen.dart - ĐÃ TÍCH HỢP MOBILE_SCANNER
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
+import '../providers/activity_provider.dart';
 import '../theme/app_theme.dart';
 
 class QrScannerScreen extends StatefulWidget {
@@ -9,49 +12,67 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen>
-    with SingleTickerProviderStateMixin {
+class _QrScannerScreenState extends State<QrScannerScreen> {
+  MobileScannerController cameraController = MobileScannerController();
   String? _scanResult;
-  bool _isScanning = false;
-
-  late AnimationController _animController;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
-    );
-    _animController.forward();
-  }
+  bool _isProcessing = false;
 
   @override
   void dispose() {
-    _animController.dispose();
+    cameraController.dispose();
     super.dispose();
   }
 
-  Future<void> _startScan() async {
-    // TODO: chỗ này bạn gắn package qr như mobile_scanner / qr_code_scanner
-    // Mình để giả lập UI
+  Future<void> _handleBarcode(BarcodeCapture capture) async {
+    if (_isProcessing) return;
+
+    final barcode = capture.barcodes.firstOrNull;
+    if (barcode?.rawValue == null) return;
+
     setState(() {
-      _isScanning = true;
+      _isProcessing = true;
+      _scanResult = barcode!.rawValue;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    // Stop camera
+    await cameraController.stop();
+
     if (!mounted) return;
 
-    setState(() {
-      _isScanning = false;
-      _scanResult = 'ACT-2025-10-30-001'; // kết quả demo
-    });
+    // Call API điểm danh
+    try {
+      final provider = Provider.of<ActivityProvider>(context, listen: false);
+      await provider.markAttendance(_scanResult!);
 
-    // Nếu muốn tự đóng và trả kết quả thì Navigator.pop(context, _scanResult);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Điểm danh thành công!'),
+          backgroundColor: AppTheme.secondaryColor,
+        ),
+      );
+
+      // Đợi 1.5s rồi quay lại
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ ${e.toString().replaceAll("Exception: ", "")}'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+
+      // Cho phép quét lại
+      setState(() {
+        _isProcessing = false;
+        _scanResult = null;
+      });
+      cameraController.start();
+    }
   }
 
   @override
@@ -60,11 +81,10 @@ class _QrScannerScreenState extends State<QrScannerScreen>
       backgroundColor: AppTheme.backgroundColor,
       body: Column(
         children: [
-          // app bar gradient
+          // App Bar
           Container(
             padding:
                 const EdgeInsets.only(top: 48, left: 16, right: 16, bottom: 16),
-            width: double.infinity,
             decoration: const BoxDecoration(
               gradient: AppTheme.primaryGradient,
               boxShadow: [
@@ -83,7 +103,7 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                 ),
                 const SizedBox(width: 8),
                 const Text(
-                  'Quét mã QR',
+                  'Quét mã QR điểm danh',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -94,192 +114,173 @@ class _QrScannerScreenState extends State<QrScannerScreen>
             ),
           ),
 
+          // Camera View
           Expanded(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    // ô camera giả
-                    Container(
-                      height: 280,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(24),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/images/qr_bg.png'),
-                          fit: BoxFit.cover,
-                          opacity: 0.05,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          // 4 góc bo laser
-                          _buildCorner(Alignment.topLeft),
-                          _buildCorner(Alignment.topRight),
-                          _buildCorner(Alignment.bottomLeft),
-                          _buildCorner(Alignment.bottomRight),
+            child: Stack(
+              children: [
+                MobileScanner(
+                  controller: cameraController,
+                  onDetect: _handleBarcode,
+                ),
 
-                          // đang quét
-                          if (_isScanning)
-                            Align(
-                              alignment: Alignment.center,
-                              child: Container(
-                                width: 160,
-                                height: 2,
-                                decoration: BoxDecoration(
-                                  color: Colors.greenAccent,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          Colors.greenAccent.withOpacity(0.7),
-                                      blurRadius: 12,
-                                    )
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                // Overlay
+                CustomPaint(
+                  painter: ScannerOverlay(),
+                  child: Container(),
+                ),
 
-                    // nút quét
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton.icon(
-                        onPressed: _isScanning ? null : _startScan,
-                        icon: const Icon(Icons.qr_code_scanner_rounded),
-                        label:
-                            Text(_isScanning ? 'Đang quét...' : 'BẮT ĐẦU QUÉT'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // kết quả
-                    if (_scanResult != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceColor,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                            )
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppTheme.secondaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.check_circle,
-                                color: AppTheme.secondaryColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Đã quét: $_scanResult',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () {
-                                setState(() => _scanResult = null);
-                              },
-                              icon: const Icon(Icons.close),
-                            )
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    // hướng dẫn
-                    Container(
-                      width: double.infinity,
+                // Status
+                if (_scanResult != null)
+                  Positioned(
+                    bottom: 40,
+                    left: 20,
+                    right: 20,
+                    child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceColor,
+                        color: AppTheme.secondaryColor,
                         borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Hướng dẫn',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '1. Đi đến vị trí hoạt động\n'
-                            '2. Mở màn hình này\n'
-                            '3. Quét mã QR do BTC cung cấp để điểm danh',
-                            style: TextStyle(
-                              color: AppTheme.textSecondary,
-                              height: 1.5,
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 12,
                           )
                         ],
                       ),
-                    )
-                  ],
+                      child: Row(
+                        children: [
+                          const CircularProgressIndicator(color: Colors.white),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              _isProcessing
+                                  ? 'Đang điểm danh...'
+                                  : 'Đã quét: $_scanResult',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Instructions
+          Container(
+            padding: const EdgeInsets.all(24),
+            color: AppTheme.surfaceColor,
+            child: Column(
+              children: const [
+                Icon(Icons.qr_code_scanner,
+                    size: 48, color: AppTheme.primaryColor),
+                SizedBox(height: 12),
+                Text(
+                  'Hướng camera vào mã QR do BTC cung cấp',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
-              ),
+                SizedBox(height: 8),
+                Text(
+                  'Mã QR sẽ tự động được quét khi vào khung hình',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildCorner(Alignment alignment) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(color: Colors.white, width: 3),
-            left: BorderSide(color: Colors.white, width: 3),
-            right: BorderSide(color: Colors.white, width: 3),
-            bottom: BorderSide(color: Colors.white, width: 3),
-          ),
-        ),
+// Custom painter cho overlay scanner
+class ScannerOverlay extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black.withOpacity(0.5)
+      ..style = PaintingStyle.fill;
+
+    // Dark overlay
+    canvas.drawPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height)),
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+            Rect.fromCenter(
+              center: Offset(size.width / 2, size.height / 2),
+              width: 280,
+              height: 280,
+            ),
+            const Radius.circular(20),
+          ))
+          ..close(),
       ),
+      paint,
+    );
+
+    // Corner borders
+    final borderPaint = Paint()
+      ..color = AppTheme.secondaryColor
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke;
+
+    final cornerSize = 30.0;
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+    final halfSize = 140.0;
+
+    // Top-left
+    canvas.drawPath(
+      Path()
+        ..moveTo(centerX - halfSize, centerY - halfSize + cornerSize)
+        ..lineTo(centerX - halfSize, centerY - halfSize)
+        ..lineTo(centerX - halfSize + cornerSize, centerY - halfSize),
+      borderPaint,
+    );
+
+    // Top-right
+    canvas.drawPath(
+      Path()
+        ..moveTo(centerX + halfSize - cornerSize, centerY - halfSize)
+        ..lineTo(centerX + halfSize, centerY - halfSize)
+        ..lineTo(centerX + halfSize, centerY - halfSize + cornerSize),
+      borderPaint,
+    );
+
+    // Bottom-left
+    canvas.drawPath(
+      Path()
+        ..moveTo(centerX - halfSize, centerY + halfSize - cornerSize)
+        ..lineTo(centerX - halfSize, centerY + halfSize)
+        ..lineTo(centerX - halfSize + cornerSize, centerY + halfSize),
+      borderPaint,
+    );
+
+    // Bottom-right
+    canvas.drawPath(
+      Path()
+        ..moveTo(centerX + halfSize - cornerSize, centerY + halfSize)
+        ..lineTo(centerX + halfSize, centerY + halfSize)
+        ..lineTo(centerX + halfSize, centerY + halfSize - cornerSize),
+      borderPaint,
     );
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
