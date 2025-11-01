@@ -119,6 +119,35 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // ===== THÊM METHOD MỚI: CẬP NHẬT THÔNG TIN SINH VIÊN =====
+  Future<void> updateUserInfo({
+    required String fullName,
+    required String studentId,
+    required String studentClass,
+  }) async {
+    try {
+      final response = await _apiClient.put(
+        'auth/update-info',
+        {
+          'fullName': fullName,
+          'studentId': studentId,
+          'class': studentClass,
+        },
+      );
+
+      // Cập nhật local user
+      if (response['user'] != null) {
+        _currentUser = User.fromJson(response['user']);
+        notifyListeners();
+      }
+
+      debugPrint('Cập nhật thông tin thành công!');
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+  // ==========================================================
+
   // ----- Đăng xuất -----
   Future<void> logout() async {
     _token = null;

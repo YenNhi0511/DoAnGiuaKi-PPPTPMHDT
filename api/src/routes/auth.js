@@ -1,4 +1,5 @@
-// src/routes/auth.js — BẢN HOÀN CHỈNH CÓ ĐỔI MẬT KHẨU
+// api/src/routes/auth.js - THÊM ROUTE CẬP NHẬT THÔNG TIN
+
 import express from 'express';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
@@ -7,7 +8,7 @@ import authMiddleware from '../middlewares/auth.js';
 
 const router = express.Router();
 
-/* ------------------ ĐĂNG KÝ ------------------ */
+/* ------------------ ĐĂNG KÝ (GIỮ NGUYÊN) ------------------ */
 router.post('/register', async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
@@ -44,6 +45,8 @@ router.post('/register', async (req, res) => {
         fullName: newUser.fullName,
         email: newUser.email,
         role: newUser.role,
+        studentId: newUser.studentId,
+        class: newUser.class,
       },
     });
   } catch (error) {
@@ -52,7 +55,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-/* ------------------ ĐĂNG NHẬP ------------------ */
+/* ------------------ ĐĂNG NHẬP (CẬP NHẬT ĐỂ TRẢ THÊM THÔNG TIN) ------------------ */
 router.post('/login', async (req, res) => {
   console.log('---------------------------------');
   console.log('ĐÃ NHẬN ĐƯỢC REQUEST LOGIN');
@@ -87,6 +90,8 @@ router.post('/login', async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        studentId: user.studentId,
+        class: user.class,
       },
     });
   } catch (error) {
@@ -95,7 +100,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/* ------------------ LẤY THÔNG TIN NGƯỜI DÙNG ------------------ */
+/* ------------------ LẤY THÔNG TIN NGƯỜI DÙNG (CẬP NHẬT) ------------------ */
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
@@ -109,7 +114,7 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
-/* ------------------ ĐỔI MẬT KHẨU ------------------ */
+/* ------------------ ĐỔI MẬT KHẨU (GIỮ NGUYÊN) ------------------ */
 router.post('/change-password', authMiddleware, async (req, res) => {
   try {
     const { oldPassword, newPassword, confirmPassword } = req.body;
@@ -144,5 +149,48 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
   }
 });
+
+/* ================== ROUTE MỚI: CẬP NHẬT THÔNG TIN SINH VIÊN ================== */
+router.put('/update-info', authMiddleware, async (req, res) => {
+  try {
+    const { fullName, studentId, class: studentClass } = req.body;
+
+    // Kiểm tra nếu studentId đã tồn tại (trừ user hiện tại)
+    if (studentId) {
+      const existing = await User.findOne({
+        studentId,
+        _id: { $ne: req.user.userId },
+      });
+
+      if (existing) {
+        return res.status(409).json({ message: 'MSSV này đã được sử dụng' });
+      }
+    }
+
+    const updateData = {};
+    if (fullName) updateData.fullName = fullName;
+    if (studentId) updateData.studentId = studentId;
+    if (studentClass) updateData.class = studentClass;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: updateData },
+      { new: true, select: '-password' }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    res.status(200).json({
+      message: 'Cập nhật thông tin thành công',
+      user,
+    });
+  } catch (error) {
+    console.error('Lỗi cập nhật thông tin:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+});
+/* ============================================================================= */
 
 export default router;

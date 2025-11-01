@@ -24,6 +24,16 @@ const userSchema = new mongoose.Schema(
       enum: ['student', 'admin'],
       default: 'student',
     },
+    // ===== THÊM CÁC TRƯỜNG MỚI =====
+    studentId: {
+      type: String,
+      sparse: true, // Cho phép null, nhưng nếu có thì phải unique
+      trim: true,
+    },
+    class: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true, // Tự động thêm createdAt và updatedAt

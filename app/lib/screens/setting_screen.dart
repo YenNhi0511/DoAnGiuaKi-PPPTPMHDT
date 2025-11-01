@@ -2,15 +2,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
+import 'change_password_screen.dart';
+import 'student_info_screen.dart';
 
-class SettingScreen extends StatelessWidget {
+class SettingScreen extends StatefulWidget {
   const SettingScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SettingScreen> createState() => _SettingScreenState();
+}
+
+class _SettingScreenState extends State<SettingScreen> {
+  bool _notificationsEnabled = true;
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context, listen: false);
     final user = auth.currentUser;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -80,7 +92,7 @@ class SettingScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                user?.fullName ?? 'Sinh viên',
+                                user?.fullName ?? 'Người dùng',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -89,8 +101,7 @@ class SettingScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                user?.email ??
-                                    'chua_co_email@sv.hcmunre.edu.vn',
+                                user?.email ?? 'email@example.com',
                                 style: const TextStyle(
                                   color: AppTheme.textSecondary,
                                   fontSize: 13,
@@ -105,9 +116,9 @@ class SettingScreen extends StatelessWidget {
                             color: AppTheme.secondaryColor.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Text(
-                            'SV',
-                            style: TextStyle(
+                          child: Text(
+                            user?.role == 'admin' ? 'Admin' : 'SV',
+                            style: const TextStyle(
                               color: AppTheme.secondaryColor,
                               fontWeight: FontWeight.bold,
                             ),
@@ -118,6 +129,25 @@ class SettingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
+                  // Thông tin sinh viên (chỉ hiển thị cho student)
+                  if (user?.role == 'student') ...[
+                    _buildSectionTitle('Thông tin cá nhân'),
+                    _buildSettingItem(
+                      icon: Icons.badge_outlined,
+                      title: 'Thông tin sinh viên',
+                      subtitle: 'Cập nhật MSSV, lớp',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StudentInfoScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // danh sách cài đặt
                   _buildSectionTitle('Tài khoản'),
                   _buildSettingItem(
@@ -125,7 +155,12 @@ class SettingScreen extends StatelessWidget {
                     title: 'Đổi mật khẩu',
                     subtitle: 'Cập nhật mật khẩu mới',
                     onTap: () {
-                      // TODO: chuyển sang màn đổi mật khẩu
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ChangePasswordScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildSettingItem(
@@ -133,8 +168,20 @@ class SettingScreen extends StatelessWidget {
                     title: 'Thông báo',
                     subtitle: 'Bật / tắt thông báo hoạt động',
                     trailing: Switch(
-                      value: true,
-                      onChanged: (val) {},
+                      value: _notificationsEnabled,
+                      onChanged: (val) {
+                        setState(() {
+                          _notificationsEnabled = val;
+                        });
+                        // TODO: Lưu vào SharedPreferences
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              val ? 'Đã bật thông báo' : 'Đã tắt thông báo',
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
 
@@ -143,13 +190,32 @@ class SettingScreen extends StatelessWidget {
                   _buildSettingItem(
                     icon: Icons.palette_outlined,
                     title: 'Chế độ hiển thị',
-                    subtitle: 'Sáng / Tối',
-                    onTap: () {},
+                    subtitle: isDarkMode ? 'Chế độ tối' : 'Chế độ sáng',
+                    trailing: Switch(
+                      value: isDarkMode,
+                      onChanged: (val) {
+                        themeProvider.toggleTheme(val);
+                      },
+                    ),
                   ),
                   _buildSettingItem(
                     icon: Icons.info_outline,
                     title: 'Thông tin ứng dụng',
                     subtitle: 'Phiên bản 1.0.0',
+                    onTap: () {
+                      showAboutDialog(
+                        context: context,
+                        applicationName: 'CNIT Activities',
+                        applicationVersion: '1.0.0',
+                        applicationIcon: const Icon(Icons.school, size: 48),
+                        children: [
+                          const Text(
+                            'Ứng dụng quản lý hoạt động sinh viên\n'
+                            'Khoa Công Nghệ Thông Tin',
+                          ),
+                        ],
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 16),
@@ -157,12 +223,52 @@ class SettingScreen extends StatelessWidget {
                   _buildSettingItem(
                     icon: Icons.help_outline,
                     title: 'Hướng dẫn sử dụng',
-                    onTap: () {},
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Hướng dẫn sử dụng'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              '1. Đăng ký hoạt động trước hạn chót\n'
+                              '2. Quét QR code để điểm danh\n'
+                              '3. Kiểm tra lịch sử tham gia\n'
+                              '4. Cập nhật thông tin cá nhân',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Đóng'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   _buildSettingItem(
                     icon: Icons.privacy_tip_outlined,
                     title: 'Điều khoản & Bảo mật',
-                    onTap: () {},
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Điều khoản & Bảo mật'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'Ứng dụng cam kết bảo mật thông tin cá nhân của người dùng. '
+                              'Mọi dữ liệu được mã hóa và lưu trữ an toàn.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Đóng'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 32),
@@ -171,8 +277,37 @@ class SettingScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 54,
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        auth.logout();
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Xác nhận đăng xuất'),
+                            content: const Text('Bạn có chắc muốn đăng xuất?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Hủy'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text(
+                                  'Đăng xuất',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true && mounted) {
+                          await auth.logout();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Đã đăng xuất thành công')),
+                            );
+                          }
+                        }
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.errorColor,

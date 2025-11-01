@@ -17,7 +17,8 @@ import 'screens/admin_manage_activities.dart';
 import 'screens/setting_screen.dart';
 import 'screens/activity_list_screen.dart';
 import 'screens/history_screen.dart';
-
+import 'screens/admin_report_screen.dart'; // ← THÊM
+import 'screens/student_info_screen.dart'; // ← THÊM
 
 void main() {
   runApp(
@@ -25,7 +26,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => ActivityProvider()), 
+        ChangeNotifierProvider(create: (_) => ActivityProvider()),
       ],
       child: const MyApp(),
     ),
@@ -42,9 +43,9 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'Quản lý Hoạt động SV',
           // --- ÁP DỤNG THEME TÙY CHỈNH ---
-          theme: MyThemes.lightTheme, 
+          theme: MyThemes.lightTheme,
           darkTheme: MyThemes.darkTheme,
-          themeMode: themeProvider.themeMode, 
+          themeMode: themeProvider.themeMode,
           debugShowCheckedModeBanner: false,
 
           // Điều hướng chính của ứng dụng
@@ -58,7 +59,7 @@ class MyApp extends StatelessWidget {
 
               if (authService.isAuthenticated) {
                 if (userRole == 'admin') {
-                  return const AdminHomeScreen(); 
+                  return const AdminHomeScreen();
                 } else {
                   return const StudentHomeScreen();
                 }
@@ -74,10 +75,13 @@ class MyApp extends StatelessWidget {
             '/register': (context) => const RegisterScreen(),
             '/admin_home': (context) => const AdminHomeScreen(),
             '/student_home': (context) => const StudentHomeScreen(),
-            '/admin_manage_activities': (context) => const AdminManageActivitiesScreen(),
+            '/admin_manage_activities': (context) =>
+                const AdminManageActivitiesScreen(),
             '/settings': (context) => const SettingScreen(),
             '/activity_list': (context) => const ActivityListScreen(),
             '/history': (context) => const HistoryScreen(),
+            '/admin_report': (context) => const AdminReportScreen(), // ← THÊM
+            '/student_info': (context) => const StudentInfoScreen(), // ← THÊM
           },
         );
       },

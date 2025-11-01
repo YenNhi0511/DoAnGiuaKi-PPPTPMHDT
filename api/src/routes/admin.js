@@ -10,6 +10,7 @@ import auth from '../middlewares/auth.js';
 // Import các Models (dùng import)
 import Activity from '../models/Activity.js';
 import Registration from '../models/Registration.js';
+import User from '../models/User.js';
 
 /**
  * =================================================================
@@ -179,4 +180,61 @@ router.get(
   }
 );
 
+// ====== ROUTE MỚI: BÁO CÁO TỔNG HỢP ======
+/**
+ * @route   GET /api/admin/report
+ * @desc    Lấy báo cáo tổng hợp tất cả sinh viên đã tham gia hoạt động
+ * @access  Private (Admin)
+ */
+router.get('/report', [auth, adminMiddleware], async (req, res) => {
+  try {
+    // Lấy tất cả registrations đã điểm danh
+    const registrations = await Registration.find({ attended: true })
+      .populate('student', 'fullName email studentId')
+      .populate('activity', 'name')
+      .sort({ createdAt: -1 });
+
+    // Format dữ liệu
+    const report = registrations.map(reg => {
+      if (!reg.student || !reg.activity) return null;
+      
+      return {
+        studentId: reg.student.studentId || 'N/A',
+        fullName: reg.student.fullName,
+        email: reg.student.email,
+        activityName: reg.activity.name,
+      };
+    }).filter(Boolean);
+
+    res.json(report);
+  } catch (err) {
+    console.error('Lỗi GET /admin/report:', err.message);
+    res.status(500).json({ msg: 'Lỗi máy chủ khi tạo báo cáo' });
+  }
+});
+
+/**
+ * @route   GET /api/admin/statistics
+ * @desc    Lấy thống kê tổng quan cho trang admin
+ * @access  Private (Admin)
+ */
+router.get('/statistics', [auth, adminMiddleware], async (req, res) => {
+  try {
+    const totalActivities = await Activity.countDocuments();
+    const totalStudents = await User.countDocuments({ role: 'student' });
+    const totalRegistrations = await Registration.countDocuments();
+    const attendedCount = await Registration.countDocuments({ attended: true });
+
+    res.json({
+      totalActivities,
+      totalStudents,
+      totalRegistrations,
+      attendedCount,
+      notAttendedCount: totalRegistrations - attendedCount,
+    });
+  } catch (err) {
+    console.error('Lỗi GET /admin/statistics:', err.message);
+    res.status(500).json({ msg: 'Lỗi máy chủ khi lấy thống kê' });
+  }
+});
 export default router;
