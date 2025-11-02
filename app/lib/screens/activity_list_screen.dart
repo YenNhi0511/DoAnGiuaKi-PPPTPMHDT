@@ -1,3 +1,4 @@
+// lib/screens/activity_list_screen.dart - ĐÃ CẢI THIỆN
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,9 @@ class _ActivityListScreenState extends State<ActivityListScreen>
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  // ✅ THÊM: Filter state
+  String _filterStatus = 'all'; // all, upcoming, ongoing, past
 
   @override
   void initState() {
@@ -39,8 +43,29 @@ class _ActivityListScreenState extends State<ActivityListScreen>
     _animController.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ActivityProvider>(context, listen: false).fetchActivities();
+      _loadActivities();
     });
+  }
+
+  // ✅ THÊM: Load with error handling
+  Future<void> _loadActivities() async {
+    final provider = Provider.of<ActivityProvider>(context, listen: false);
+    try {
+      await provider.fetchActivities();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải dữ liệu: ${e.toString()}'),
+            action: SnackBarAction(
+              label: 'Thử lại',
+              onPressed: _loadActivities,
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -57,6 +82,24 @@ class _ActivityListScreenState extends State<ActivityListScreen>
     return DateFormat('HH:mm').format(date.toLocal());
   }
 
+  // ✅ THÊM: Filter logic
+  List<dynamic> _filterActivities(List<dynamic> activities) {
+    final now = DateTime.now();
+
+    switch (_filterStatus) {
+      case 'upcoming':
+        return activities.where((a) => now.isBefore(a.startDate)).toList();
+      case 'ongoing':
+        return activities
+            .where((a) => now.isAfter(a.startDate) && now.isBefore(a.endDate))
+            .toList();
+      case 'past':
+        return activities.where((a) => now.isAfter(a.endDate)).toList();
+      default:
+        return activities;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,18 +108,29 @@ class _ActivityListScreenState extends State<ActivityListScreen>
         child: Column(
           children: [
             _buildAppBar(context),
+            _buildFilterChips(), // ✅ THÊM
             Expanded(
               child: Consumer<ActivityProvider>(
                 builder: (context, provider, child) {
+                  // ✅ CẢI THIỆN: Loading state
                   if (provider.isLoadingActivities) {
-                    return const Center(child: CircularProgressIndicator());
+                    return _buildLoadingState();
                   }
 
+                  // ✅ CẢI THIỆN: Error state with retry
                   if (provider.activitiesError != null) {
-                    return _buildErrorState(provider.activitiesError!);
+                    return _buildErrorState(
+                      provider.activitiesError!,
+                      onRetry: _loadActivities,
+                    );
                   }
 
-                  if (provider.activities.isEmpty) {
+                  // ✅ THÊM: Filter activities
+                  final filteredActivities =
+                      _filterActivities(provider.activities);
+
+                  // ✅ CẢI THIỆN: Empty state
+                  if (filteredActivities.isEmpty) {
                     return _buildEmptyState();
                   }
 
@@ -85,12 +139,14 @@ class _ActivityListScreenState extends State<ActivityListScreen>
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: RefreshIndicator(
-                        onRefresh: () => provider.fetchActivities(),
+                        onRefresh: _loadActivities, // ✅ SỬA: Dùng method mới
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          itemCount: provider.activities.length,
+                          physics:
+                              const AlwaysScrollableScrollPhysics(), // ✅ THÊM
+                          itemCount: filteredActivities.length,
                           itemBuilder: (context, index) {
-                            final activity = provider.activities[index];
+                            final activity = filteredActivities[index];
                             return _buildActivityCard(context, activity, index);
                           },
                         ),
@@ -106,6 +162,53 @@ class _ActivityListScreenState extends State<ActivityListScreen>
     );
   }
 
+  // ✅ THÊM: Filter chips
+  Widget _buildFilterChips() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildFilterChip('Tất cả', 'all', Icons.list),
+            const SizedBox(width: 8),
+            _buildFilterChip('Sắp diễn ra', 'upcoming', Icons.upcoming),
+            const SizedBox(width: 8),
+            _buildFilterChip('Đang diễn ra', 'ongoing', Icons.play_circle),
+            const SizedBox(width: 8),
+            _buildFilterChip('Đã kết thúc', 'past', Icons.history),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, IconData icon) {
+    final isSelected = _filterStatus == value;
+    return FilterChip(
+      selected: isSelected,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+      onSelected: (selected) {
+        setState(() {
+          _filterStatus = value;
+        });
+      },
+      selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+      checkmarkColor: AppTheme.primaryColor,
+      labelStyle: TextStyle(
+        color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
   Widget _buildAppBar(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -113,7 +216,7 @@ class _ActivityListScreenState extends State<ActivityListScreen>
         gradient: AppTheme.primaryGradient,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+            color: AppTheme.primaryColor.withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -126,13 +229,35 @@ class _ActivityListScreenState extends State<ActivityListScreen>
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Danh sách Hoạt động',
+          const Expanded(
+            child: Text(
+              'Danh sách Hoạt động',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ CẢI THIỆN: Loading state
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(
+            'Đang tải hoạt động...',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+              color: AppTheme.textSecondary,
+              fontSize: 16,
             ),
           ),
         ],
@@ -173,7 +298,7 @@ class _ActivityListScreenState extends State<ActivityListScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -213,7 +338,7 @@ class _ActivityListScreenState extends State<ActivityListScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.1),
+                          color: statusColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -286,7 +411,7 @@ class _ActivityListScreenState extends State<ActivityListScreen>
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 16, color: color),
@@ -305,7 +430,22 @@ class _ActivityListScreenState extends State<ActivityListScreen>
     );
   }
 
+  // ✅ CẢI THIỆN: Empty state
   Widget _buildEmptyState() {
+    String message = 'Chưa có hoạt động nào';
+    IconData icon = Icons.event_busy;
+
+    if (_filterStatus == 'upcoming') {
+      message = 'Không có hoạt động sắp diễn ra';
+      icon = Icons.upcoming;
+    } else if (_filterStatus == 'ongoing') {
+      message = 'Không có hoạt động đang diễn ra';
+      icon = Icons.play_circle_outline;
+    } else if (_filterStatus == 'past') {
+      message = 'Không có hoạt động đã kết thúc';
+      icon = Icons.history;
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -313,19 +453,19 @@ class _ActivityListScreenState extends State<ActivityListScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              color: AppTheme.primaryColor.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.event_busy,
+            child: Icon(
+              icon,
               size: 64,
               color: AppTheme.primaryColor,
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Chưa có hoạt động nào',
-            style: TextStyle(
+          Text(
+            message,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
@@ -344,35 +484,51 @@ class _ActivityListScreenState extends State<ActivityListScreen>
     );
   }
 
-  Widget _buildErrorState(String error) {
+  // ✅ CẢI THIỆN: Error state with retry
+  Widget _buildErrorState(String error, {VoidCallback? onRetry}) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.error_outline,
-            size: 64,
-            color: AppTheme.errorColor,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Đã xảy ra lỗi',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: AppTheme.errorColor,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            error,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
+            const SizedBox(height: 16),
+            const Text(
+              'Đã xảy ra lỗi',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
