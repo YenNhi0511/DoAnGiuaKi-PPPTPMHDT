@@ -8,6 +8,8 @@ import os from 'os';
 import authRoutes from './routes/auth.js';
 import activityRoutes from './routes/activities.js';
 import adminRoutes from './routes/admin.js';
+import classRoutes from './routes/classes.js';
+
 
 dotenv.config();
 
@@ -130,6 +132,7 @@ mongoose.connection.on('error', (err) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/classes', classRoutes);
 
 // Route test kết nối
 app.get('/api/health', (req, res) => {

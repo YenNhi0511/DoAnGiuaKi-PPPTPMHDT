@@ -19,6 +19,7 @@ import 'screens/activity_list_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/admin_report_screen.dart'; // ← THÊM
 import 'screens/student_info_screen.dart'; // ← THÊM
+import 'screens/admin_class_management_screen.dart';
 
 void main() {
   runApp(

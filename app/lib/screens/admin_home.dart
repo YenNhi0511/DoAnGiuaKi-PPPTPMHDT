@@ -1,4 +1,4 @@
-// lib/screens/admin_home.dart - ĐÃ SỬA
+// lib/screens/admin_home.dart - HOÀN CHỈNH
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +9,7 @@ import 'setting_screen.dart';
 import 'admin_manage_activities.dart';
 import 'attendance_activity_list_screen.dart';
 import 'admin_report_screen.dart';
+import 'admin_class_management_screen.dart'; // ✅ THÊM IMPORT
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -40,16 +41,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         0, (sum, activity) => sum + activity.participantCount);
   }
 
-  // ✅ SỬA: Tính số người chờ điểm danh (đã đăng ký nhưng chưa điểm danh)
   int _getWaitingAttendance(Activity? activity) {
     if (activity == null) return 0;
     final now = DateTime.now();
 
-    // Chỉ tính nếu hoạt động đang diễn ra
     if (now.isAfter(activity.startDate) && now.isBefore(activity.endDate)) {
-      // participantCount = tổng số đã đăng ký
-      // Cần lấy số người đã điểm danh từ API (tạm thời trả về participantCount)
-      // TODO: Gọi API để lấy số người đã điểm danh thực tế
       return activity.participantCount;
     }
     return 0;
@@ -68,7 +64,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               _getUpcomingActivities(provider.activities);
           final totalActivities = provider.activities.length;
 
-          // ✅ SỬA: Tính số liệu dựa trên hoạt động được chọn
           final displayParticipants = _selectedActivity != null
               ? _selectedActivity!.participantCount
               : _getTotalParticipants(provider.activities);
@@ -263,6 +258,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                             },
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // ✅ NÚT QUẢN LÝ LỚP - FULL WIDTH
+                      _AdminFuncCard(
+                        icon: Icons.class_outlined,
+                        title: 'Quản lý Lớp',
+                        subtitle: 'Danh sách lớp học',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const AdminClassManagementScreen()),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 24),

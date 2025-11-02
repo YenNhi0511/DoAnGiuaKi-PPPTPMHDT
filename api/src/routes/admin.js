@@ -12,6 +12,12 @@ import Activity from '../models/Activity.js';
 import Registration from '../models/Registration.js';
 import User from '../models/User.js';
 
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /**
  * =================================================================
  * Middleware kiểm tra quyền Admin
@@ -237,4 +243,109 @@ router.get('/statistics', [auth, adminMiddleware], async (req, res) => {
     res.status(500).json({ msg: 'Lỗi máy chủ khi lấy thống kê' });
   }
 });
+// ✅ ROUTE XUẤT BÁO CÁO RA FILE CSV
+router.get('/export-report', [auth, adminMiddleware], async (req, res) => {
+  try {
+    // 1. Lấy dữ liệu
+    const registrations = await Registration.find({ attended: true })
+      .populate('student', 'fullName email studentId')
+      .populate('activity', 'name')
+      .sort({ createdAt: -1 });
+
+    // 2. Chuẩn bị dữ liệu CSV
+    const csvData = registrations.map(reg => ({
+      MSSV: reg.student?.studentId || 'N/A',
+      'Họ và tên': reg.student?.fullName || 'N/A',
+      Email: reg.student?.email || 'N/A',
+      'Hoạt động': reg.activity?.name || 'N/A',
+    }));
+
+    // 3. Tạo thư mục exports nếu chưa có
+    const exportsDir = path.join(__dirname, '../../exports');
+    if (!fs.existsSync(exportsDir)) {
+      fs.mkdirSync(exportsDir, { recursive: true });
+    }
+
+    // 4. Tên file với timestamp
+    const timestamp = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
+    const filename = `BaoCaoHoatDong_${timestamp}.csv`;
+    const filepath = path.join(exportsDir, filename);
+
+    // 5. Tạo CSV với BOM để Excel hiển thị đúng tiếng Việt
+    stringify(csvData, {
+      header: true,
+      bom: true,
+      columns: ['MSSV', 'Họ và tên', 'Email', 'Hoạt động'],
+    }, (err, output) => {
+      if (err) {
+        console.error('Lỗi tạo CSV:', err);
+        return res.status(500).json({ msg: 'Lỗi tạo file CSV' });
+      }
+
+      // 6. Ghi file
+      fs.writeFileSync(filepath, output, 'utf8');
+
+      // 7. Trả về file cho client download
+      res.download(filepath, filename, (downloadErr) => {
+        if (downloadErr) {
+          console.error('Lỗi download:', downloadErr);
+        }
+        
+        // Xóa file sau khi download (tùy chọn)
+        // fs.unlinkSync(filepath);
+      });
+    });
+  } catch (err) {
+    console.error('Lỗi export report:', err.message);
+    res.status(500).json({ msg: 'Lỗi máy chủ khi xuất báo cáo' });
+  }
+});
+
+// ✅ ROUTE LẤY BÁO CÁO (JSON)
+router.get('/report', [auth, adminMiddleware], async (req, res) => {
+  try {
+    const registrations = await Registration.find({ attended: true })
+      .populate('student', 'fullName email studentId')
+      .populate('activity', 'name')
+      .sort({ createdAt: -1 });
+
+    const report = registrations.map(reg => {
+      if (!reg.student || !reg.activity) return null;
+      
+      return {
+        studentId: reg.student.studentId || 'N/A',
+        fullName: reg.student.fullName,
+        email: reg.student.email,
+        activityName: reg.activity.name,
+      };
+    }).filter(Boolean);
+
+    res.json(report);
+  } catch (err) {
+    console.error('Lỗi GET /admin/report:', err.message);
+    res.status(500).json({ msg: 'Lỗi máy chủ khi tạo báo cáo' });
+  }
+});
+
+// ✅ ROUTE THỐNG KÊ
+router.get('/statistics', [auth, adminMiddleware], async (req, res) => {
+  try {
+    const totalActivities = await Activity.countDocuments();
+    const totalStudents = await User.countDocuments({ role: 'student' });
+    const totalRegistrations = await Registration.countDocuments();
+    const attendedCount = await Registration.countDocuments({ attended: true });
+
+    res.json({
+      totalActivities,
+      totalStudents,
+      totalRegistrations,
+      attendedCount,
+      notAttendedCount: totalRegistrations - attendedCount,
+    });
+  } catch (err) {
+    console.error('Lỗi GET /admin/statistics:', err.message);
+    res.status(500).json({ msg: 'Lỗi máy chủ khi lấy thống kê' });
+  }
+});
+
 export default router;
