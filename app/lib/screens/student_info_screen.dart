@@ -1,7 +1,8 @@
-// lib/screens/student_info_screen.dart - ĐÃ SỬA LƯU THÔNG TIN
+// lib/screens/student_info_screen.dart - HOÀN CHỈNH
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 
 class StudentInfoScreen extends StatefulWidget {
@@ -16,53 +17,61 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
   final _mssvController = TextEditingController();
   final _fullNameController = TextEditingController();
 
-  String _selectedClass = '12 ĐH CNTT2';
-
-  final List<String> _classList = [
-    '12 ĐH CNTT2',
-    '12 ĐH CNTT3',
-    '12 ĐH CNTT1',
-    '12 ĐH CNTT4',
-    '12 ĐH CNTT5',
-    '13 ĐH CNTT1',
-    '13 ĐH CNTT3',
-    '13 ĐH CNTT5',
-    '13 ĐH CNTT2',
-    '13 ĐH CNTT4',
-    '13 ĐH CNTT6',
-    '12 ĐH HTTT',
-    '13 ĐH HTTT2',
-    '13 ĐH HTTT1',
-    '11 ĐH CNPM1',
-    '11 ĐH CNPM2',
-    '11 ĐH THMT',
-    '11 ĐH TTMT',
-    '14 ĐH CNTT2',
-    '14 ĐH CNTT1',
-    '14 ĐH CNTT3',
-    '14 ĐH CNTT4',
-    '14 ĐH HTTT1',
-    '14 ĐH HTTT2',
-    '14 ĐH CNTT5',
-  ];
+  String _selectedClass = '';
+  List<String> _classList = []; // ✅ Load từ DB
 
   bool _isLoading = false;
+  bool _isLoadingClasses = true; // ✅ Loading state cho classes
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
+    _loadClasses(); // ✅ Load danh sách lớp từ DB
+  }
+
+  // ✅ Load classes từ API
+  Future<void> _loadClasses() async {
+    try {
+      final apiClient = ApiClient();
+      final data = await apiClient.get('classes');
+
+      final classes = (data as List).map((e) => e['name'] as String).toList();
+
+      setState(() {
+        _classList = classes;
+        _isLoadingClasses = false;
+
+        // Set default nếu chưa có
+        if (_selectedClass.isEmpty && _classList.isNotEmpty) {
+          _selectedClass = _classList.first;
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingClasses = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải danh sách lớp: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 
   void _loadUserInfo() {
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
     if (user != null) {
       _fullNameController.text = user.fullName;
-      // ✅ SỬA: Load MSSV và Class từ user
+      // ✅ Load MSSV và Class từ user
       if (user.studentId != null && user.studentId!.isNotEmpty) {
         _mssvController.text = user.studentId!;
       }
-      if (user.studentClass != null && _classList.contains(user.studentClass)) {
+      if (user.studentClass != null && user.studentClass!.isNotEmpty) {
         _selectedClass = user.studentClass!;
       }
     }
@@ -71,12 +80,23 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
   Future<void> _saveInfo() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // ✅ Kiểm tra phải chọn lớp
+    if (_selectedClass.isEmpty || !_classList.contains(_selectedClass)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng chọn lớp'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
 
-      // ✅ SỬA: Gọi API update
+      // ✅ Gọi API update
       await authService.updateUserInfo(
         fullName: _fullNameController.text.trim(),
         studentId: _mssvController.text.trim(),
@@ -92,7 +112,7 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
           ),
         );
 
-        // ✅ THÊM: Đợi 1s rồi pop về
+        // ✅ Đợi 1s rồi pop về
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) {
           Navigator.pop(context);
@@ -312,29 +332,48 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedClass,
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.class_,
-                              color: AppTheme.primaryColor),
-                          border: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                        items: _classList.map((String className) {
-                          return DropdownMenuItem<String>(
-                            value: className,
-                            child: Text(className),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _selectedClass = newValue;
-                            });
-                          }
-                        },
-                      ),
+                      child: _isLoadingClasses
+                          ? const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          : _classList.isEmpty
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Text(
+                                    'Chưa có lớp nào. Vui lòng liên hệ admin.',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                )
+                              : DropdownButtonFormField<String>(
+                                  value: _selectedClass.isNotEmpty &&
+                                          _classList.contains(_selectedClass)
+                                      ? _selectedClass
+                                      : null,
+                                  decoration: const InputDecoration(
+                                    prefixIcon: Icon(Icons.class_,
+                                        color: AppTheme.primaryColor),
+                                    border: InputBorder.none,
+                                    contentPadding:
+                                        EdgeInsets.symmetric(horizontal: 16),
+                                  ),
+                                  hint: const Text('Chọn lớp'),
+                                  items: _classList.map((String className) {
+                                    return DropdownMenuItem<String>(
+                                      value: className,
+                                      child: Text(className),
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) {
+                                    if (newValue != null) {
+                                      setState(() {
+                                        _selectedClass = newValue;
+                                      });
+                                    }
+                                  },
+                                ),
                     ),
                     const SizedBox(height: 32),
 
