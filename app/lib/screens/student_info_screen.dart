@@ -198,7 +198,7 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Trường Đại học Kinh tế - Tài chính TP.HCM',
+                            'Trường Đại học Tài Nguyên Và Môi Trường TP.HCM',
                             style: TextStyle(
                               fontSize: 13,
                               color: AppTheme.textSecondary,
