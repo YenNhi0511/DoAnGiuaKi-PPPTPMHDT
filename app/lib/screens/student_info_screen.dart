@@ -1,4 +1,4 @@
-// lib/screens/student_info_screen.dart
+// lib/screens/student_info_screen.dart - ĐÃ SỬA LƯU THÔNG TIN
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -58,9 +58,13 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
     if (user != null) {
       _fullNameController.text = user.fullName;
-      // Nếu có studentId và class trong user model thì load vào
-      // _mssvController.text = user.studentId ?? '';
-      // _selectedClass = user.class ?? _classList[0];
+      // ✅ SỬA: Load MSSV và Class từ user
+      if (user.studentId != null && user.studentId!.isNotEmpty) {
+        _mssvController.text = user.studentId!;
+      }
+      if (user.studentClass != null && _classList.contains(user.studentClass)) {
+        _selectedClass = user.studentClass!;
+      }
     }
   }
 
@@ -71,27 +75,36 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+
+      // ✅ SỬA: Gọi API update
       await authService.updateUserInfo(
-        fullName: _fullNameController.text,
-        studentId: _mssvController.text,
+        fullName: _fullNameController.text.trim(),
+        studentId: _mssvController.text.trim(),
         studentClass: _selectedClass,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cập nhật thông tin thành công!'),
+            content: Text('✅ Cập nhật thông tin thành công!'),
             backgroundColor: AppTheme.secondaryColor,
+            duration: Duration(seconds: 2),
           ),
         );
-        Navigator.pop(context);
+
+        // ✅ THÊM: Đợi 1s rồi pop về
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: ${e.toString().replaceAll("Exception: ", "")}'),
+            content: Text('❌ ${e.toString().replaceAll("Exception: ", "")}'),
             backgroundColor: AppTheme.errorColor,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -231,10 +244,10 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
                       ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Vui lòng nhập MSSV';
                         }
-                        if (value.length != 10) {
+                        if (value.trim().length != 10) {
                           return 'MSSV phải có 10 số';
                         }
                         return null;
@@ -275,7 +288,7 @@ class _StudentInfoScreenState extends State<StudentInfoScreen> {
                         ),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Vui lòng nhập họ tên';
                         }
                         return null;

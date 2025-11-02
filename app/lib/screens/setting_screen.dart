@@ -1,8 +1,7 @@
-// lib/screens/setting_screen.dart
+// lib/screens/setting_screen.dart - ĐÃ XÓA THÔNG BÁO & CHẾ ĐỘ SÁNG TỐI
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
 import 'change_password_screen.dart';
 import 'student_info_screen.dart';
@@ -15,14 +14,10 @@ class SettingScreen extends StatefulWidget {
 }
 
 class _SettingScreenState extends State<SettingScreen> {
-  bool _notificationsEnabled = true;
-
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context, listen: false);
     final user = auth.currentUser;
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -163,41 +158,9 @@ class _SettingScreenState extends State<SettingScreen> {
                       );
                     },
                   ),
-                  _buildSettingItem(
-                    icon: Icons.notifications_none_rounded,
-                    title: 'Thông báo',
-                    subtitle: 'Bật / tắt thông báo hoạt động',
-                    trailing: Switch(
-                      value: _notificationsEnabled,
-                      onChanged: (val) {
-                        setState(() {
-                          _notificationsEnabled = val;
-                        });
-                        // TODO: Lưu vào SharedPreferences
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              val ? 'Đã bật thông báo' : 'Đã tắt thông báo',
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
 
                   const SizedBox(height: 16),
                   _buildSectionTitle('Ứng dụng'),
-                  _buildSettingItem(
-                    icon: Icons.palette_outlined,
-                    title: 'Chế độ hiển thị',
-                    subtitle: isDarkMode ? 'Chế độ tối' : 'Chế độ sáng',
-                    trailing: Switch(
-                      value: isDarkMode,
-                      onChanged: (val) {
-                        themeProvider.toggleTheme(val);
-                      },
-                    ),
-                  ),
                   _buildSettingItem(
                     icon: Icons.info_outline,
                     title: 'Thông tin ứng dụng',
@@ -205,7 +168,7 @@ class _SettingScreenState extends State<SettingScreen> {
                     onTap: () {
                       showAboutDialog(
                         context: context,
-                        applicationName: 'CNIT Activities',
+                        applicationName: 'DTM IT Activities',
                         applicationVersion: '1.0.0',
                         applicationIcon: const Icon(Icons.school, size: 48),
                         children: [
@@ -272,7 +235,7 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
 
                   const SizedBox(height: 32),
-                  // logout
+                  // ✅ SỬA ĐĂNG XUẤT: Load ra trang đăng nhập ngay
                   SizedBox(
                     width: double.infinity,
                     height: 54,
@@ -300,11 +263,14 @@ class _SettingScreenState extends State<SettingScreen> {
                         );
 
                         if (confirm == true && mounted) {
+                          // ✅ Logout
                           await auth.logout();
+
+                          // ✅ Chuyển đến trang đăng nhập NGAY LẬP TỨC
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Đã đăng xuất thành công')),
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              '/login',
+                              (route) => false, // Xóa toàn bộ stack
                             );
                           }
                         }

@@ -1,6 +1,6 @@
-// lib/screens/login_screen.dart - ĐÃ THIẾT KẾ LẠI
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _rememberPassword = false;
   String _errorMessage = '';
 
   late AnimationController _animController;
@@ -43,6 +44,22 @@ class _LoginScreenState extends State<LoginScreen>
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
 
     _animController.forward();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('saved_email');
+    final savedPassword = prefs.getString('saved_password');
+    final rememberMe = prefs.getBool('remember_password') ?? false;
+
+    if (rememberMe && savedEmail != null && savedPassword != null) {
+      setState(() {
+        _emailController.text = savedEmail;
+        _passwordController.text = savedPassword;
+        _rememberPassword = true;
+      });
+    }
   }
 
   @override
@@ -66,6 +83,17 @@ class _LoginScreenState extends State<LoginScreen>
         _emailController.text,
         _passwordController.text,
       );
+
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberPassword) {
+        await prefs.setString('saved_email', _emailController.text);
+        await prefs.setString('saved_password', _passwordController.text);
+        await prefs.setBool('remember_password', true);
+      } else {
+        await prefs.remove('saved_email');
+        await prefs.remove('saved_password');
+        await prefs.setBool('remember_password', false);
+      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -102,13 +130,12 @@ class _LoginScreenState extends State<LoginScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo Container
                       Container(
-                        width: 100,
-                        height: 100,
+                        width: 80,
+                        height: 80,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
@@ -119,31 +146,30 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         child: const Icon(
                           Icons.login_rounded,
-                          size: 50,
+                          size: 40,
                           color: AppTheme.primaryColor,
                         ),
                       ),
-                      const SizedBox(height: 32),
-
-                      // Title
+                      const SizedBox(height: 24),
                       const Text(
                         'Đăng Nhập',
                         style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
                           color: Colors.white,
-                          letterSpacing: 1,
+                          letterSpacing: 2,
                         ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Chào mừng trở lại!',
+                        'Quản lý hoạt động sinh viên',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           color: Colors.white70,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 32),
 
                       // Form Card
                       Container(
@@ -163,11 +189,11 @@ class _LoginScreenState extends State<LoginScreen>
                           key: _formKey,
                           child: Column(
                             children: [
-                              // Email Field
                               CustomTextField(
                                 controller: _emailController,
                                 label: 'Email',
                                 icon: Icons.email_outlined,
+                                iconSize: 20,
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -181,12 +207,11 @@ class _LoginScreenState extends State<LoginScreen>
                                 },
                               ),
                               const SizedBox(height: 16),
-
-                              // Password Field
                               CustomTextField(
                                 controller: _passwordController,
                                 label: 'Mật khẩu',
                                 icon: Icons.lock_outline,
+                                iconSize: 20,
                                 obscureText: _obscurePassword,
                                 suffixIcon: IconButton(
                                   icon: Icon(
@@ -194,6 +219,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         ? Icons.visibility_off
                                         : Icons.visibility,
                                     color: AppTheme.textSecondary,
+                                    size: 20,
                                   ),
                                   onPressed: () {
                                     setState(() =>
@@ -207,9 +233,35 @@ class _LoginScreenState extends State<LoginScreen>
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 12),
 
-                              // Error Message
+                              // ✅ CHỈ GIỮ LẠI CHECKBOX LƯU MẬT KHẨU
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: Checkbox(
+                                      value: _rememberPassword,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _rememberPassword = value ?? false;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Lưu mật khẩu',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
                               if (_errorMessage.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -221,20 +273,20 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: Row(
                                     children: [
                                       const Icon(Icons.error_outline,
-                                          color: AppTheme.errorColor),
+                                          color: AppTheme.errorColor, size: 20),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
                                           _errorMessage,
                                           style: const TextStyle(
-                                              color: AppTheme.errorColor),
+                                              color: AppTheme.errorColor,
+                                              fontSize: 13),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
 
-                              // Login Button
                               GradientButton(
                                 onPressed: _isLoading ? null : _submit,
                                 gradient: AppTheme.primaryGradient,
@@ -261,8 +313,6 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
                       const SizedBox(height: 24),
-
-                      // Register Link
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pushNamed('/register');
@@ -288,11 +338,12 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-// Custom TextField Widget
+// Custom TextField
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData icon;
+  final double iconSize;
   final bool obscureText;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
@@ -303,6 +354,7 @@ class CustomTextField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.icon,
+    this.iconSize = 24,
     this.obscureText = false,
     this.keyboardType,
     this.validator,
@@ -317,15 +369,13 @@ class CustomTextField extends StatelessWidget {
       keyboardType: keyboardType,
       validator: validator,
       style: const TextStyle(
-        color: AppTheme.textPrimary, // ✅ THÊM: Màu chữ
+        color: AppTheme.textPrimary,
         fontSize: 16,
       ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: Colors.grey.shade600, // ✅ THÊM: Màu label
-        ),
-        prefixIcon: Icon(icon, color: AppTheme.primaryColor),
+        labelStyle: TextStyle(color: Colors.grey.shade600),
+        prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: iconSize),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: AppTheme.backgroundColor,
@@ -343,14 +393,14 @@ class CustomTextField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300), // ✅ THÊM
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
       ),
     );
   }
 }
 
-// Gradient Button Widget
+// Gradient Button
 class GradientButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final Widget child;

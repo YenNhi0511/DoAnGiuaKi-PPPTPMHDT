@@ -1,4 +1,5 @@
-// lib/screens/admin_report_screen.dart - ĐÃ THÊM XUẤT EXCEL
+// lib/screens/admin_report_screen.dart - XUẤT EXCEL THỰC TẾ
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -50,11 +51,14 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
     }
   }
 
-  // ✅ THÊM: Hàm xuất Excel
+  // ✅ XUẤT EXCEL THỰC TẾ - FILE CSV
   Future<void> _exportToExcel() async {
     if (_records.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không có dữ liệu để xuất')),
+        const SnackBar(
+          content: Text('Không có dữ liệu để xuất'),
+          backgroundColor: AppTheme.errorColor,
+        ),
       );
       return;
     }
@@ -62,8 +66,9 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
     setState(() => _isExporting = true);
 
     try {
-      // Tạo nội dung CSV
+      // Tạo CSV content với UTF-8 BOM để Excel hiển thị đúng tiếng Việt
       StringBuffer csv = StringBuffer();
+      csv.write('\uFEFF'); // UTF-8 BOM
 
       // Header
       csv.writeln('STT,MSSV,Họ và tên,Email,Hoạt động');
@@ -71,27 +76,74 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
       // Data rows
       for (int i = 0; i < _records.length; i++) {
         final record = _records[i];
-        csv.writeln(
-            '${i + 1},"${record.studentId}","${record.fullName}","${record.email}","${record.activityName}"');
+        csv.writeln('${i + 1},'
+            '"${record.studentId}",'
+            '"${record.fullName}",'
+            '"${record.email}",'
+            '"${record.activityName}"');
       }
 
       // Lưu file
-      final directory = await getApplicationDocumentsDirectory();
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = await getExternalStorageDirectory();
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final filePath = '${directory.path}/BaoCaoHoatDong_$timestamp.csv';
+      final filePath = '${directory!.path}/BaoCaoHoatDong_$timestamp.csv';
 
       final file = File(filePath);
-      await file.writeAsString(csv.toString());
+      await file.writeAsString(csv.toString(), encoding: utf8);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã xuất file: $filePath'),
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'OK',
-              onPressed: () {},
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                SizedBox(width: 12),
+                Text('Xuất file thành công!'),
+              ],
             ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('File đã được lưu tại:'),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    filePath,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Tổng số: ${_records.length} bản ghi',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Đóng'),
+              ),
+            ],
           ),
         );
       }
@@ -100,7 +152,8 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi xuất file: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -159,20 +212,29 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
                   ),
                 ),
               ),
-              // ✅ THÊM: Nút xuất Excel
-              IconButton(
+              // ✅ NÚT XUẤT EXCEL
+              ElevatedButton.icon(
+                onPressed: _isExporting ? null : _exportToExcel,
                 icon: _isExporting
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 16,
+                        height: 16,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: AppTheme.primaryColor,
                           strokeWidth: 2,
                         ),
                       )
-                    : const Icon(Icons.download, color: Colors.white),
-                onPressed: _isExporting ? null : _exportToExcel,
-                tooltip: 'Xuất Excel',
+                    : const Icon(Icons.download, size: 20),
+                label: Text(_isExporting ? 'Đang xuất...' : 'Xuất Excel'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppTheme.primaryColor,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ],
           ),
