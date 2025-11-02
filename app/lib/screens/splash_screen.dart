@@ -109,7 +109,7 @@ class _SplashState extends State<SplashScreen>
                   ),
                   const SizedBox(height: 32),
                   const Text(
-                    'CNIT Activities',
+                    'CNTT Activities',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,

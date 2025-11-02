@@ -73,7 +73,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'CNIT Activities',
+                      'CNTT Activities',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,

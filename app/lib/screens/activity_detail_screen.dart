@@ -1,4 +1,4 @@
-// lib/screens/activity_detail_screen.dart - ĐÃ SỬA
+// lib/screens/activity_detail_screen.dart - ĐÃ THIẾT KẾ LẠI
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +6,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../models/activity.dart';
 import '../providers/activity_provider.dart';
 import '../services/auth_service.dart';
-import 'qr_scanner_screen.dart'; // ✅ THÊM IMPORT
+import '../theme/app_theme.dart';
+import 'qr_scanner_screen.dart';
 
 class ActivityDetailScreen extends StatelessWidget {
   final Activity activity;
@@ -23,23 +24,75 @@ class ActivityDetailScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('QR Điểm danh: $activityName'),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: QrImageView(
-              data: activityId,
-              version: QrVersions.auto,
-              size: 300.0,
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'QR Điểm danh',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  activityName,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200, width: 2),
+                  ),
+                  child: QrImageView(
+                    data: activityId,
+                    version: QrVersions.auto,
+                    size: 250.0,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Đóng',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Đóng'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
         );
       },
     );
@@ -54,7 +107,8 @@ class ActivityDetailScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -88,96 +142,306 @@ class ActivityDetailScreen extends StatelessWidget {
         );
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text(isFromHistory ? 'Chi tiết Lịch sử' : liveActivity.name),
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  liveActivity.name,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                _InfoRow(
-                  icon: Icons.calendar_today_outlined,
-                  text:
-                      'Thời gian: ${_formatDateRange(liveActivity.startDate, liveActivity.endDate)}',
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  icon: Icons.timer_off_outlined,
-                  text:
-                      'Hạn chót ĐK: ${DateFormat('dd/MM/yyyy HH:mm').format(liveActivity.registrationDeadline.toLocal())}',
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  icon: Icons.location_on_outlined,
-                  text: 'Địa điểm: ${liveActivity.location}',
-                ),
-                if (userRole == 'admin' ||
-                    liveActivity.maxParticipants > 0) ...[
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    icon: Icons.people_outline,
-                    text:
-                        'Số lượng: ${liveActivity.participantCount} / ${liveActivity.maxParticipants > 0 ? liveActivity.maxParticipants : 'Không giới hạn'}',
-                  ),
-                ],
-                const SizedBox(height: 24),
-                Text(
-                  'Mô tả hoạt động:',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const Divider(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Text(
-                      liveActivity.description,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
+          backgroundColor: AppTheme.backgroundColor,
+          body: Column(
+            children: [
+              _buildHeader(context, liveActivity),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInfoCard(context, liveActivity, userRole),
+                      _buildDescriptionCard(context, liveActivity),
+                      _buildActionSection(
+                          context, liveActivity, provider, userRole),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-
-                // HÀNH ĐỘNG
-                if (userRole == 'admin')
-                  _buildAdminActions(context, liveActivity)
-                else if (userRole == 'student')
-                  _buildStudentActions(
-                      context, liveActivity, provider, isFromHistory)
-                else
-                  Container(),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildAdminActions(BuildContext context, Activity activity) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        icon: const Icon(Icons.qr_code_2_sharp),
-        label: const Text(
-          'HIỆN QR ĐIỂM DANH',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        onPressed: () {
-          _showQrDialog(context, activity.id, activity.name);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).primaryColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
+  Widget _buildHeader(BuildContext context, Activity activity) {
+    return Container(
+      padding: const EdgeInsets.only(top: 48, left: 16, right: 16, bottom: 24),
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isFromHistory ? 'Chi tiết Lịch sử' : 'Chi tiết Hoạt động',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            activity.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(
+      BuildContext context, Activity activity, String? userRole) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildInfoRow(
+            Icons.calendar_today_outlined,
+            'Thời gian',
+            _formatDateRange(activity.startDate, activity.endDate),
+            AppTheme.primaryColor,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoRow(
+            Icons.timer_off_outlined,
+            'Hạn chót ĐK',
+            DateFormat('dd/MM/yyyy HH:mm')
+                .format(activity.registrationDeadline.toLocal()),
+            AppTheme.accentColor,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoRow(
+            Icons.location_on_outlined,
+            'Địa điểm',
+            activity.location,
+            AppTheme.secondaryColor,
+          ),
+          if (userRole == 'admin' || activity.maxParticipants > 0) ...[
+            const SizedBox(height: 16),
+            _buildInfoRow(
+              Icons.people_outline,
+              'Số lượng',
+              '${activity.participantCount} / ${activity.maxParticipants > 0 ? activity.maxParticipants : 'Không giới hạn'}',
+              const Color(0xFFFF7675),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionCard(BuildContext context, Activity activity) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.description_outlined,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Mô tả hoạt động',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          Text(
+            activity.description,
+            style: const TextStyle(
+              fontSize: 15,
+              color: AppTheme.textSecondary,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionSection(BuildContext context, Activity activity,
+      ActivityProvider provider, String? userRole) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      child: userRole == 'admin'
+          ? _buildAdminActions(context, activity)
+          : _buildStudentActions(context, activity, provider, isFromHistory),
+    );
+  }
+
+  Widget _buildAdminActions(BuildContext context, Activity activity) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showQrDialog(context, activity.id, activity.name),
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.qr_code_2_sharp,
+                  size: 32,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hiện QR Điểm danh',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Cho sinh viên quét để điểm danh',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white,
+                size: 20,
+              ),
+            ],
           ),
         ),
       ),
@@ -194,57 +458,45 @@ class ActivityDetailScreen extends StatelessWidget {
         activity.participantCount >= activity.maxParticipants;
     final bool isLoading = provider.isActivityLoading(activity.id);
 
-    // ✅ LOGIC 1: XEM TỪ LỊCH SỬ
+    // XEM TỪ LỊCH SỬ
     if (isFromHistory) {
       if (activity.attended) {
-        return _buildStatusChip(
-          text: 'TRẠNG THÁI: ĐÃ ĐIỂM DANH',
-          color: Colors.green,
+        return _buildStatusContainer(
+          icon: Icons.check_circle,
+          text: 'ĐÃ ĐIỂM DANH',
+          subtitle: 'Bạn đã hoàn thành hoạt động này',
+          gradient: AppTheme.successGradient,
         );
       } else if (isActivityFinished) {
-        return _buildStatusChip(
-          text: 'TRẠNG THÁI: CHƯA ĐIỂM DANH (ĐÃ KẾT THÚC)',
-          color: Colors.grey.shade600,
+        return _buildStatusContainer(
+          icon: Icons.cancel_outlined,
+          text: 'CHƯA ĐIỂM DANH',
+          subtitle: 'Hoạt động đã kết thúc',
+          gradient: const LinearGradient(
+            colors: [Color(0xFF636E72), Color(0xFF95A5A6)],
+          ),
         );
       } else {
-        // ✅ THÊM: Nút quét QR nếu đã đăng ký nhưng chưa điểm danh
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildStatusChip(
-              text: 'TRẠNG THÁI: CHƯA ĐIỂM DANH',
-              color: Colors.orange.shade700,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const QrScannerScreen()),
-                );
-              },
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('QUÉT QR ĐIỂM DANH',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+            _buildStatusContainer(
+              icon: Icons.schedule,
+              text: 'CHƯA ĐIỂM DANH',
+              subtitle: 'Hãy quét QR để điểm danh',
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF7675), Color(0xFFFF6B81)],
               ),
             ),
+            const SizedBox(height: 16),
+            _buildQrScanButton(context),
           ],
         );
       }
     }
 
-    // ✅ LOGIC 2: XEM TỪ DANH SÁCH CHÍNH
+    // XEM TỪ DANH SÁCH CHÍNH
     final bool showUnregisterButton = activity.isRegistered;
     final String buttonText = showUnregisterButton ? 'HỦY ĐĂNG KÝ' : 'ĐĂNG KÝ';
-    final Color buttonColor =
-        showUnregisterButton ? Colors.red.shade600 : Colors.green.shade600;
 
     bool isDisabled = isLoading;
     String? disabledReason;
@@ -269,99 +521,184 @@ class ActivityDetailScreen extends StatelessWidget {
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ElevatedButton(
-          onPressed: isDisabled
-              ? null
-              : () => _handleToggleRegistration(context, provider, activity),
-          child: isLoading
-              ? const SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 3))
-              : Text(buttonText,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isDisabled ? Colors.grey.shade500 : buttonColor,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            disabledBackgroundColor: Colors.grey.shade500,
-            disabledForegroundColor: Colors.white70,
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: isDisabled
+                ? null
+                : (showUnregisterButton
+                    ? const LinearGradient(
+                        colors: [Color(0xFFD63031), Color(0xFFFF7675)])
+                    : AppTheme.successGradient),
+            color: isDisabled ? Colors.grey.shade400 : null,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: isDisabled
+                ? null
+                : [
+                    BoxShadow(
+                      color: (showUnregisterButton
+                              ? const Color(0xFFD63031)
+                              : AppTheme.secondaryColor)
+                          .withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: isDisabled
+                  ? null
+                  : () =>
+                      _handleToggleRegistration(context, provider, activity),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Center(
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : Text(
+                          buttonText,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDisabled ? Colors.white70 : Colors.white,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                ),
+              ),
+            ),
           ),
         ),
         if (isDisabled && disabledReason != null && !isLoading)
           Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text(disabledReason,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red.shade700)),
-          ),
-
-        // ✅ THÊM: Nút quét QR nếu đã đăng ký
-        if (activity.isRegistered && !isActivityFinished) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const QrScannerScreen()),
-              );
-            },
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('QUÉT QR ĐIỂM DANH',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.blue.shade600,
-              side: BorderSide(color: Colors.blue.shade600, width: 2),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.only(top: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.info_outline, size: 16, color: AppTheme.errorColor),
+                const SizedBox(width: 8),
+                Text(
+                  disabledReason,
+                  style: const TextStyle(
+                    color: AppTheme.errorColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
+        if (activity.isRegistered && !isActivityFinished) ...[
+          const SizedBox(height: 16),
+          _buildQrScanButton(context),
         ],
       ],
     );
   }
 
-  Widget _buildStatusChip({required String text, required Color color}) {
+  Widget _buildStatusContainer({
+    required IconData icon,
+    required String text,
+    required String subtitle,
+    required Gradient gradient,
+  }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration:
-          BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-      child: Text(text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 48, color: Colors.white),
+          const SizedBox(height: 12),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
 
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _InfoRow({Key? key, required this.icon, required this.text})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2.0),
-          child: Icon(icon, color: Colors.grey.shade700, size: 20),
+  Widget _buildQrScanButton(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0984E3), Color(0xFF74B9FF)],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-            child: Text(text, style: Theme.of(context).textTheme.titleMedium)),
-      ],
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0984E3).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const QrScannerScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Text(
+                  'QUÉT QR ĐIỂM DANH',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

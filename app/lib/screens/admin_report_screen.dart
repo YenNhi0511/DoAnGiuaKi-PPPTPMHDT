@@ -1,4 +1,3 @@
-// lib/screens/admin_report_screen.dart - XUẤT EXCEL THỰC TẾ
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +17,6 @@ class AdminReportScreen extends StatefulWidget {
 
 class _AdminReportScreenState extends State<AdminReportScreen> {
   bool _isLoading = false;
-  bool _isExporting = false;
   List<ReportRecord> _records = [];
   String? _errorMessage;
 
@@ -51,117 +49,6 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
     }
   }
 
-  // ✅ XUẤT EXCEL THỰC TẾ - FILE CSV
-  Future<void> _exportToExcel() async {
-    if (_records.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không có dữ liệu để xuất'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isExporting = true);
-
-    try {
-      // Tạo CSV content với UTF-8 BOM để Excel hiển thị đúng tiếng Việt
-      StringBuffer csv = StringBuffer();
-      csv.write('\uFEFF'); // UTF-8 BOM
-
-      // Header
-      csv.writeln('STT,MSSV,Họ và tên,Email,Hoạt động');
-
-      // Data rows
-      for (int i = 0; i < _records.length; i++) {
-        final record = _records[i];
-        csv.writeln('${i + 1},'
-            '"${record.studentId}",'
-            '"${record.fullName}",'
-            '"${record.email}",'
-            '"${record.activityName}"');
-      }
-
-      // Lưu file
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = await getExternalStorageDirectory();
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final filePath = '${directory!.path}/BaoCaoHoatDong_$timestamp.csv';
-
-      final file = File(filePath);
-      await file.writeAsString(csv.toString(), encoding: utf8);
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 28),
-                SizedBox(width: 12),
-                Text('Xuất file thành công!'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('File đã được lưu tại:'),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SelectableText(
-                    filePath,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Tổng số: ${_records.length} bản ghi',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Đóng'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi xuất file: $e'),
-            backgroundColor: AppTheme.errorColor,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } finally {
-      setState(() => _isExporting = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,9 +57,7 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
         child: Column(
           children: [
             _buildHeader(context),
-            Expanded(
-              child: _buildBody(),
-            ),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
@@ -212,30 +97,7 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
                   ),
                 ),
               ),
-              // ✅ NÚT XUẤT EXCEL
-              ElevatedButton.icon(
-                onPressed: _isExporting ? null : _exportToExcel,
-                icon: _isExporting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          color: AppTheme.primaryColor,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(Icons.download, size: 20),
-                label: Text(_isExporting ? 'Đang xuất...' : 'Xuất Excel'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.primaryColor,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              // ❌ ĐÃ XOÁ NÚT XUẤT EXCEL
             ],
           ),
           const SizedBox(height: 8),
@@ -268,7 +130,6 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thống kê tổng quan
             _buildSummaryCard(),
             const SizedBox(height: 16),
 
@@ -287,7 +148,7 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
               ),
               child: Column(
                 children: [
-                  // Header
+                  // Header bảng
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: const BoxDecoration(
@@ -328,7 +189,7 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
                     ),
                   ),
 
-                  // Rows
+                  // Các dòng dữ liệu
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -341,10 +202,7 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
                         padding: const EdgeInsets.all(12),
                         child: Row(
                           children: [
-                            SizedBox(
-                              width: 40,
-                              child: Text('${index + 1}'),
-                            ),
+                            SizedBox(width: 40, child: Text('${index + 1}')),
                             Expanded(
                               flex: 2,
                               child: Text(record.studentId,

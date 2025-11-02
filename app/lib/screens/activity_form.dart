@@ -1,4 +1,4 @@
-// lib/screens/activity_form.dart - ĐÃ CẢI THIỆN
+// lib/screens/activity_form.dart - THIẾT KẾ NHẸ NHÀNG
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -30,8 +30,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
 
   bool _isLoading = false;
   bool _isEditMode = false;
-
-  // ✅ THÊM: Track nếu form đã thay đổi
   bool _hasUnsavedChanges = false;
 
   @override
@@ -56,7 +54,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       _selectedRegistrationDeadline = widget.activity!.registrationDeadline;
     }
 
-    // ✅ THÊM: Listen to changes
     _nameController.addListener(_onFormChanged);
     _descriptionController.addListener(_onFormChanged);
     _locationController.addListener(_onFormChanged);
@@ -87,7 +84,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       initialDate: initialDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2101),
-      // ✅ THÊM: Theme
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -110,7 +106,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(initialDate),
-      // ✅ THÊM: Theme
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -135,7 +130,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     );
   }
 
-  // ✅ CẢI THIỆN: Validation logic rõ ràng hơn
   String? _validateDates() {
     if (_selectedStartDate == null ||
         _selectedEndDate == null ||
@@ -151,7 +145,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       return 'Hạn chót đăng ký phải trước Ngày bắt đầu';
     }
 
-    // ✅ THÊM: Kiểm tra thời gian hợp lý
     final duration = _selectedEndDate!.difference(_selectedStartDate!);
     if (duration.inMinutes < 30) {
       return 'Hoạt động phải kéo dài ít nhất 30 phút';
@@ -161,11 +154,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   }
 
   Future<void> _submitForm() async {
-    // ✅ THÊM: Dismiss keyboard
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) {
-      // ✅ THÊM: Show validation error
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Vui lòng điền đầy đủ thông tin'),
@@ -175,7 +166,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       return;
     }
 
-    // ✅ CẢI THIỆN: Validate dates
     final dateError = _validateDates();
     if (dateError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -187,7 +177,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       return;
     }
 
-    // ✅ THÊM: Confirmation dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -270,7 +259,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     return format.format(dt);
   }
 
-  // ✅ THÊM: Handle back button
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
 
@@ -300,229 +288,384 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onWillPop, // ✅ THÊM
+      onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: AppTheme.backgroundColor,
-        appBar: AppBar(
-          title: Text(_isEditMode ? 'Sửa Hoạt động' : 'Tạo Hoạt động Mới'),
-          elevation: 0,
-        ),
-        body: _isLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
-                    Text(
-                      _isEditMode ? 'Đang cập nhật...' : 'Đang tạo mới...',
-                      style: const TextStyle(color: AppTheme.textSecondary),
+        body: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.only(
+                  top: 48, left: 16, right: 16, bottom: 20),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _isEditMode ? 'Sửa Hoạt động' : 'Tạo Hoạt động Mới',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ],
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // ✅ THÊM: Info card
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppTheme.primaryColor.withOpacity(0.3),
-                            ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Body
+            Expanded(
+              child: _isLoading
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            _isEditMode
+                                ? 'Đang cập nhật...'
+                                : 'Đang tạo mới...',
+                            style:
+                                const TextStyle(color: AppTheme.textSecondary),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info_outline,
-                                  color: AppTheme.primaryColor),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Điền đầy đủ thông tin để tạo hoạt động mới',
-                                  style: TextStyle(
-                                    color: AppTheme.primaryColor,
-                                    fontSize: 13,
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Info banner - Nhẹ hơn
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline,
+                                      color: AppTheme.primaryColor, size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Điền đầy đủ thông tin để tạo hoạt động mới',
+                                      style: TextStyle(
+                                        color: AppTheme.primaryColor,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Tên hoạt động
+                            TextFormField(
+                              controller: _nameController,
+                              decoration: InputDecoration(
+                                labelText: 'Tên Hoạt động *',
+                                hintText: 'VD: Hoạt động ngoại khóa',
+                                prefixIcon: Icon(Icons.event,
+                                    color: AppTheme.primaryColor),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.primaryColor, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.errorColor, width: 1.5),
+                                ),
+                              ),
+                              textCapitalization: TextCapitalization.words,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Vui lòng nhập tên hoạt động';
+                                }
+                                if (value.trim().length < 5) {
+                                  return 'Tên phải có ít nhất 5 ký tự';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Mô tả
+                            TextFormField(
+                              controller: _descriptionController,
+                              decoration: InputDecoration(
+                                labelText: 'Mô tả *',
+                                hintText: 'Mô tả chi tiết về hoạt động',
+                                prefixIcon: Icon(Icons.description,
+                                    color: AppTheme.primaryColor),
+                                alignLabelWithHint: true,
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.primaryColor, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.errorColor, width: 1.5),
+                                ),
+                              ),
+                              maxLines: 4,
+                              maxLength: 500,
+                              textCapitalization: TextCapitalization.sentences,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Vui lòng nhập mô tả';
+                                }
+                                if (value.trim().length < 20) {
+                                  return 'Mô tả phải có ít nhất 20 ký tự';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Địa điểm
+                            TextFormField(
+                              controller: _locationController,
+                              decoration: InputDecoration(
+                                labelText: 'Địa điểm *',
+                                hintText: 'VD: Phòng A101',
+                                prefixIcon: Icon(Icons.location_on,
+                                    color: AppTheme.primaryColor),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.primaryColor, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.errorColor, width: 1.5),
+                                ),
+                              ),
+                              textCapitalization: TextCapitalization.words,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Vui lòng nhập địa điểm';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Số lượng
+                            TextFormField(
+                              controller: _maxParticipantsController,
+                              decoration: InputDecoration(
+                                labelText: 'Số lượng tối đa',
+                                hintText: '0 = không giới hạn',
+                                prefixIcon: Icon(Icons.people,
+                                    color: AppTheme.primaryColor),
+                                helperText:
+                                    'Nhập 0 nếu không giới hạn số lượng',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.primaryColor, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: AppTheme.errorColor, width: 1.5),
+                                ),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Nhập 0 nếu không giới hạn';
+                                }
+                                final num = int.tryParse(value);
+                                if (num == null || num < 0) {
+                                  return 'Vui lòng nhập số hợp lệ';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Divider
+                            const Divider(thickness: 1),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Thời gian',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Date pickers - Nhẹ hơn
+                            _buildDateTimePicker(
+                              context: context,
+                              label: 'Ngày bắt đầu *',
+                              selectedDate: _selectedStartDate,
+                              pickTime: true,
+                              icon: Icons.event_available,
+                              onDateSelected: (picked) {
+                                setState(() {
+                                  _selectedStartDate = picked;
+                                  _hasUnsavedChanges = true;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 14),
+
+                            _buildDateTimePicker(
+                              context: context,
+                              label: 'Ngày kết thúc *',
+                              selectedDate: _selectedEndDate,
+                              pickTime: true,
+                              icon: Icons.event_busy,
+                              onDateSelected: (picked) {
+                                setState(() {
+                                  _selectedEndDate = picked;
+                                  _hasUnsavedChanges = true;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 14),
+
+                            _buildDateTimePicker(
+                              context: context,
+                              label: 'Hạn chót đăng ký *',
+                              selectedDate: _selectedRegistrationDeadline,
+                              pickTime: true,
+                              icon: Icons.timer_off,
+                              onDateSelected: (picked) {
+                                setState(() {
+                                  _selectedRegistrationDeadline = picked;
+                                  _hasUnsavedChanges = true;
+                                });
+                              },
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // Submit button
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.primaryGradient,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        AppTheme.primaryColor.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _submitForm,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      _isEditMode ? 'CẬP NHẬT' : 'TẠO MỚI',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Tên Hoạt động *',
-                            hintText: 'VD: Hội thảo công nghệ AI',
-                            prefixIcon: Icon(Icons.event),
-                          ),
-                          textCapitalization: TextCapitalization.words,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Vui lòng nhập tên hoạt động';
-                            }
-                            if (value.trim().length < 5) {
-                              return 'Tên phải có ít nhất 5 ký tự';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        TextFormField(
-                          controller: _descriptionController,
-                          decoration: const InputDecoration(
-                            labelText: 'Mô tả *',
-                            hintText: 'Mô tả chi tiết về hoạt động',
-                            prefixIcon: Icon(Icons.description),
-                            alignLabelWithHint: true,
-                          ),
-                          maxLines: 4,
-                          maxLength: 500, // ✅ THÊM
-                          textCapitalization: TextCapitalization.sentences,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Vui lòng nhập mô tả';
-                            }
-                            if (value.trim().length < 20) {
-                              return 'Mô tả phải có ít nhất 20 ký tự';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        TextFormField(
-                          controller: _locationController,
-                          decoration: const InputDecoration(
-                            labelText: 'Địa điểm *',
-                            hintText: 'VD: Phòng A101',
-                            prefixIcon: Icon(Icons.location_on),
-                          ),
-                          textCapitalization: TextCapitalization.words,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Vui lòng nhập địa điểm';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        TextFormField(
-                          controller: _maxParticipantsController,
-                          decoration: const InputDecoration(
-                            labelText: 'Số lượng tối đa',
-                            hintText: '0 = không giới hạn',
-                            prefixIcon: Icon(Icons.people),
-                            helperText: 'Nhập 0 nếu không giới hạn số lượng',
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
+                            ),
+                            const SizedBox(height: 16),
                           ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Nhập 0 nếu không giới hạn';
-                            }
-                            final num = int.tryParse(value);
-                            if (num == null || num < 0) {
-                              return 'Vui lòng nhập số hợp lệ';
-                            }
-                            return null;
-                          },
                         ),
-                        const SizedBox(height: 24),
-
-                        const Divider(),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Thời gian',
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        _buildDateTimePicker(
-                          context: context,
-                          label: 'Ngày bắt đầu *',
-                          selectedDate: _selectedStartDate,
-                          pickTime: true,
-                          icon: Icons.event_available,
-                          onDateSelected: (picked) {
-                            setState(() {
-                              _selectedStartDate = picked;
-                              _hasUnsavedChanges = true;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        _buildDateTimePicker(
-                          context: context,
-                          label: 'Ngày kết thúc *',
-                          selectedDate: _selectedEndDate,
-                          pickTime: true,
-                          icon: Icons.event_busy,
-                          onDateSelected: (picked) {
-                            setState(() {
-                              _selectedEndDate = picked;
-                              _hasUnsavedChanges = true;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        _buildDateTimePicker(
-                          context: context,
-                          label: 'Hạn chót đăng ký *',
-                          selectedDate: _selectedRegistrationDeadline,
-                          pickTime: true,
-                          icon: Icons.timer_off,
-                          onDateSelected: (picked) {
-                            setState(() {
-                              _selectedRegistrationDeadline = picked;
-                              _hasUnsavedChanges = true;
-                            });
-                          },
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        ElevatedButton(
-                          onPressed: _submitForm,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            _isEditMode ? 'CẬP NHẬT' : 'TẠO MỚI',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -536,14 +679,15 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     required ValueChanged<DateTime?> onDateSelected,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: selectedDate == null
-              ? AppTheme.errorColor.withOpacity(0.3)
-              : Colors.grey.shade300,
+              ? Colors.grey.shade300
+              : AppTheme.primaryColor.withOpacity(0.5),
+          width: 1.5,
         ),
       ),
       child: Column(
@@ -552,12 +696,14 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
           Row(
             children: [
               Icon(icon, color: AppTheme.primaryColor, size: 20),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
               ),
             ],
           ),
@@ -568,13 +714,11 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                 child: Text(
                   _formatDateTime(selectedDate, showTime: pickTime),
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     color: selectedDate == null
                         ? AppTheme.textSecondary
                         : AppTheme.textPrimary,
-                    fontWeight: selectedDate == null
-                        ? FontWeight.normal
-                        : FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -588,11 +732,17 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                   onDateSelected(picked);
                 },
                 icon: Icon(selectedDate == null ? Icons.add : Icons.edit,
-                    size: 18),
+                    size: 16),
                 label: Text(selectedDate == null ? 'CHỌN' : 'SỬA'),
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
                 ),
               ),
             ],

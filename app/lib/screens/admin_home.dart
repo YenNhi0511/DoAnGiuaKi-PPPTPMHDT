@@ -253,7 +253,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                           _AdminFuncCard(
                             icon: Icons.settings_outlined,
                             title: 'Cài đặt',
-                            subtitle: 'Tài khoản, theme',
                             onTap: () {
                               Navigator.push(
                                 context,

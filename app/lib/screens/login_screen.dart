@@ -234,34 +234,6 @@ class _LoginScreenState extends State<LoginScreen>
                                 },
                               ),
                               const SizedBox(height: 12),
-
-                              // ✅ CHỈ GIỮ LẠI CHECKBOX LƯU MẬT KHẨU
-                              Row(
-                                children: [
-                                  SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: Checkbox(
-                                      value: _rememberPassword,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _rememberPassword = value ?? false;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Lưu mật khẩu',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
                               if (_errorMessage.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -286,7 +258,6 @@ class _LoginScreenState extends State<LoginScreen>
                                     ],
                                   ),
                                 ),
-
                               GradientButton(
                                 onPressed: _isLoading ? null : _submit,
                                 gradient: AppTheme.primaryGradient,
