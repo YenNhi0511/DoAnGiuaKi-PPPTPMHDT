@@ -1,4 +1,4 @@
-// lib/screens/register_screen.dart
+// lib/screens/register_screen.dart - ĐÃ SỬA
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -69,6 +69,27 @@ class _RegisterScreenState extends State<RegisterScreen>
         _emailController.text,
         _passwordController.text,
       );
+
+      // ✅ SỬA: Hiển thị thông báo và chuyển đến Login
+      if (mounted) {
+        // Logout ngay để không tự động đăng nhập
+        await Provider.of<AuthService>(context, listen: false).logout();
+
+        // Hiển thị thông báo
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đăng ký thành công! Vui lòng đăng nhập.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Chuyển đến Login screen
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -305,7 +326,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 }
 
-// Custom TextField Widget
+// Custom TextField Widget - ✅ ĐÃ SỬA
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -333,8 +354,20 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      // ✅ THÊM: Style cho text
+      style: const TextStyle(
+        color: AppTheme.textPrimary,
+        fontSize: 16,
+      ),
       decoration: InputDecoration(
         labelText: label,
+        // ✅ THÊM: Style cho label
+        labelStyle: TextStyle(
+          color: Colors.grey.shade600,
+        ),
+        floatingLabelStyle: const TextStyle(
+          color: AppTheme.primaryColor,
+        ),
         prefixIcon: Icon(icon, color: AppTheme.primaryColor),
         suffixIcon: suffixIcon,
         filled: true,
@@ -343,6 +376,10 @@ class CustomTextField extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
@@ -350,6 +387,10 @@ class CustomTextField extends StatelessWidget {
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppTheme.errorColor, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
         ),
       ),
     );

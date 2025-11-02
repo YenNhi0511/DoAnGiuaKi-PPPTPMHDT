@@ -316,8 +316,15 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      style: const TextStyle(
+        color: AppTheme.textPrimary, // ✅ THÊM: Màu chữ
+        fontSize: 16,
+      ),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(
+          color: Colors.grey.shade600, // ✅ THÊM: Màu label
+        ),
         prefixIcon: Icon(icon, color: AppTheme.primaryColor),
         suffixIcon: suffixIcon,
         filled: true,
@@ -333,6 +340,10 @@ class CustomTextField extends StatelessWidget {
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppTheme.errorColor, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300), // ✅ THÊM
         ),
       ),
     );
