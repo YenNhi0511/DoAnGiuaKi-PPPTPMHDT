@@ -264,6 +264,19 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                           ),
                         ],
                       ),
+                      _AdminFuncCard(
+                        icon: Icons.class_outlined,
+                        title: 'Quản lý Lớp',
+                        subtitle: 'Danh sách lớp học',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const AdminClassManagementScreen()),
+                          );
+                        },
+                      ),
 
                       const SizedBox(height: 24),
                       const Text(
